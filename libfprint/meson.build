@@ -140,6 +140,9 @@ foreach driver: drivers
     if driver == 'vfs5011'
         drivers_sources += [ 'drivers/vfs5011.c' ]
     endif
+    if driver == 'vfs7552'
+        drivers_sources += [ 'drivers/vfs7552.c' ]
+    endif
     if driver == 'upektc_img'
         drivers_sources += [ 'drivers/upektc_img.c',  'drivers/upek_proto.c' ]
     endif

@@ -1,0 +1,838 @@
+Build started at 2020-06-11T00:36:22.399836
+Main binary: /usr/bin/python
+Build Options: -Ddrivers=vfs7552 -Dbackend=ninja
+Python system: Linux
+The Meson build system
+Version: 0.54.2
+Source dir: /home/life/Source/fingerprint/libfprint
+Build dir: /home/life/Source/fingerprint/libfprint/build
+Build type: native build
+None of 'PKG_CONFIG_PATH' are defined in the environment, not changing global flags.
+None of 'PKG_CONFIG_PATH' are defined in the environment, not changing global flags.
+Project name: libfprint
+Project version: 1.90.2
+C compiler for the build machine: ccache cc (gcc 10.1.0 "cc (GCC) 10.1.0")
+C linker for the build machine: cc ld.bfd 2.34.0
+None of 'AR' are defined in the environment, not changing global flags.
+C++ compiler for the build machine: ccache c++ (gcc 10.1.0 "c++ (GCC) 10.1.0")
+C++ linker for the build machine: c++ ld.bfd 2.34.0
+C compiler for the host machine: ccache cc (gcc 10.1.0 "cc (GCC) 10.1.0")
+C linker for the host machine: cc ld.bfd 2.34.0
+None of 'AR' are defined in the environment, not changing global flags.
+C++ compiler for the host machine: ccache c++ (gcc 10.1.0 "c++ (GCC) 10.1.0")
+C++ linker for the host machine: c++ ld.bfd 2.34.0
+Build machine cpu family: x86_64
+Build machine cpu: x86_64
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Target machine cpu family: x86_64
+Target machine cpu: x86_64
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmph2jm2dq8
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmph2jm2dq8/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmph2jm2dq8/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wall 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wall: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpbu6acbqb
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpbu6acbqb/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpbu6acbqb/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wcast-align 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wcast-align: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfeef2r5i
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfeef2r5i/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfeef2r5i/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wformat-nonliteral 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ cc1: warning: '-Wformat-nonliteral' ignored without '-Wformat' [-Wformat-nonliteral]
+
+Compiler for C supports arguments -Wformat-nonliteral: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpghb_3t5_
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpghb_3t5_/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpghb_3t5_/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wformat-security 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ cc1: warning: '-Wformat-security' ignored without '-Wformat' [-Wformat-security]
+
+Compiler for C supports arguments -Wformat-security: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1i0skeqj
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1i0skeqj/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1i0skeqj/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wformat=2 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wformat=2: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp2smes5rp
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp2smes5rp/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp2smes5rp/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wignored-qualifiers 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wignored-qualifiers: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpqvd_2ee4
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpqvd_2ee4/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpqvd_2ee4/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wlogical-op 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wlogical-op: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp7qobknwy
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp7qobknwy/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp7qobknwy/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-declarations 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wmissing-declarations: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpttwmlyh5
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpttwmlyh5/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpttwmlyh5/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-format-attribute 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wmissing-format-attribute: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmphmd6u3iy
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmphmd6u3iy/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmphmd6u3iy/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-include-dirs 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wmissing-include-dirs: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi2t834k2
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi2t834k2/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi2t834k2/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-noreturn 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wmissing-noreturn: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxe0q8emw
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxe0q8emw/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxe0q8emw/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wpointer-arith 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wpointer-arith: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpiumw57ar
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpiumw57ar/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpiumw57ar/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wshadow 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wshadow: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpq_ip9prf
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpq_ip9prf/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpq_ip9prf/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wtype-limits 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wtype-limits: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9udq3bmp
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9udq3bmp/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9udq3bmp/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wundef 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wundef: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpelgu7ft3
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpelgu7ft3/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpelgu7ft3/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wunused 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wunused: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk_8dvr_g
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk_8dvr_g/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk_8dvr_g/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=address 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=address: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_auvz2uy
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_auvz2uy/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_auvz2uy/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=array-bounds 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=array-bounds: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpaclu36jh
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpaclu36jh/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpaclu36jh/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=empty-body 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=empty-body: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfhpucwb3
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfhpucwb3/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfhpucwb3/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=init-self 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=init-self: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp78mzxo59
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp78mzxo59/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp78mzxo59/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=int-to-pointer-cast 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=int-to-pointer-cast: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw0_gieet
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw0_gieet/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw0_gieet/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=main 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=main: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpmw0f4a8l
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpmw0f4a8l/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpmw0f4a8l/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=missing-braces 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=missing-braces: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp35bk92xf
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp35bk92xf/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp35bk92xf/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=nonnull 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=nonnull: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6fzlrffx
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6fzlrffx/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6fzlrffx/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=redundant-decls 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=redundant-decls: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpktvyzuda
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpktvyzuda/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpktvyzuda/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=return-type 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=return-type: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcfvcbbh6
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcfvcbbh6/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcfvcbbh6/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=sequence-point 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=sequence-point: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5cd0ykvh
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5cd0ykvh/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5cd0ykvh/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=trigraphs 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=trigraphs: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpsi3tt4fm
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpsi3tt4fm/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpsi3tt4fm/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=write-strings 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=write-strings: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1o8vw6fr
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1o8vw6fr/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1o8vw6fr/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fno-strict-aliasing 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -fno-strict-aliasing: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcpstobb4
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcpstobb4/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcpstobb4/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpm26_eayn
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpm26_eayn/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpm26_eayn/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_56 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_56: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk3xuz3qk
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk3xuz3qk/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk3xuz3qk/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -D_GNU_SOURCE 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -D_GNU_SOURCE: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_p06k411
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_p06k411/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_p06k411/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -DG_LOG_DOMAIN="libfprint" 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -DG_LOG_DOMAIN="libfprint": YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5lq0vubt
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5lq0vubt/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5lq0vubt/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wimplicit-function-declaration 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wimplicit-function-declaration: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpwnfpgku8
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpwnfpgku8/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpwnfpgku8/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-prototypes 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wmissing-prototypes: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw6h5lrie
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw6h5lrie/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw6h5lrie/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wnested-externs 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wnested-externs: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1al5f3w_
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1al5f3w_/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1al5f3w_/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wold-style-definition 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wold-style-definition: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp98da_opm
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp98da_opm/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp98da_opm/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wstrict-prototypes 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wstrict-prototypes: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0uhq1sfj
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0uhq1sfj/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0uhq1sfj/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=implicit 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=implicit: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpernh28tg
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpernh28tg/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpernh28tg/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=pointer-to-int-cast 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Werror=pointer-to-int-cast: YES 
+../meson.build:67: WARNING: Consider using the built-in warning_level option instead of using "-Wall".
+../meson.build:68: WARNING: Consider using the built-in warning_level option instead of using "-Wall".
+Dependency glib-2.0 found: YES 2.64.3 (cached)
+Dependency gio-unix-2.0 found: YES 2.64.3 (cached)
+Dependency gobject-2.0 found: YES 2.64.3 (cached)
+Dependency gusb found: YES 0.3.4 (cached)
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6j6k45lc
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6j6k45lc/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6j6k45lc/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -Wl,--start-group -lm -Wl,--end-group -Wl,--allow-shlib-undefined 
+
+Code:
+ int main(void) { return 0; }
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Library m found: YES
+Dependency cairo found: YES 1.17.3 (cached)
+Dependency udev found: YES 245 (cached)
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --variable=udevdir udev` -> 0
+/usr/lib/udev
+Got pkgconfig variable udevdir : /usr/lib/udev
+Configuring config.h using configuration
+Configuring fpi-drivers.c with command
+Running command: /usr/bin/echo #include <glib-object.h>
+#include "fpi-context.h"
+
+extern GType (fpi_device_vfs7552_get_type) (void);
+
+GArray *
+fpi_get_driver_types (void)
+{
+  GArray *drivers = g_array_new (TRUE, FALSE, sizeof (GType));
+  GType t;
+
+  t = fpi_device_vfs7552_get_type ();
+  g_array_append_val (drivers, t);
+
+  return drivers;
+}
+--- stdout ---
+#include <glib-object.h>
+#include "fpi-context.h"
+
+extern GType (fpi_device_vfs7552_get_type) (void);
+
+GArray *
+fpi_get_driver_types (void)
+{
+  GArray *drivers = g_array_new (TRUE, FALSE, sizeof (GType));
+  GType t;
+
+  t = fpi_device_vfs7552_get_type ();
+  g_array_append_val (drivers, t);
+
+  return drivers;
+}
+
+--- stderr ---
+
+
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxt0e18v8
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxt0e18v8/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxt0e18v8/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-error=redundant-decls -Werror=redundant-decls 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wno-error=redundant-decls -Werror=redundant-decls: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpnadheohf
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpnadheohf/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpnadheohf/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-redundant-decls -Wredundant-decls 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wno-redundant-decls -Wredundant-decls: YES 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpn8wn4mhk
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpn8wn4mhk/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpn8wn4mhk/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-discarded-qualifiers -Wdiscarded-qualifiers 
+
+Code:
+ int i;
+
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Compiler for C supports arguments -Wno-discarded-qualifiers -Wdiscarded-qualifiers: YES 
+Pkg-config binary for MachineChoice.BUILD is not cached.
+None of 'PKG_CONFIG' are defined in the environment, not changing global flags.
+Pkg-config binary missing from cross or native file, or env var undefined.
+Trying a default Pkg-config fallback at pkg-config
+Trying pkg-config binary pkg-config for machine MachineChoice.BUILD at ['/usr/bin/pkg-config']
+Found pkg-config: /usr/bin/pkg-config (1.7.3)
+Determining dependency 'gobject-introspection-1.0' with pkg-config executable '/usr/bin/pkg-config'
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --modversion gobject-introspection-1.0` -> 0
+1.64.1
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --cflags gobject-introspection-1.0` -> 0
+-I/usr/include/gobject-introspection-1.0 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -pthread
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config gobject-introspection-1.0 --libs` -> 0
+-L/usr/lib -lgirepository-1.0 -lgobject-2.0 -lglib-2.0
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config gobject-introspection-1.0 --libs` -> 0
+-lgirepository-1.0 -lgobject-2.0 -lglib-2.0
+None of 'PKG_CONFIG_PATH' are defined in the environment, not changing global flags.
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpl56lweqm
+Command line:  ccache c++ /home/life/Source/fingerprint/libfprint/build/meson-private/tmpl56lweqm/testfile.cpp -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpl56lweqm/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -fpermissive 
+
+Code:
+ #include<stdio.h>
+        
+        int main(void) {
+            printf("%ld\n", (long)(sizeof(void *)));
+            return 0;
+        };
+Compiler stdout:
+ 
+Compiler stderr:
+ 
+Program stdout:
+
+8
+
+Program stderr:
+
+
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp9492v1v
+Command line:  ccache c++ /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp9492v1v/testfile.cpp -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp9492v1v/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs 
+
+Code:
+ 
+Compiler stdout:
+ install: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/
+programs: =/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/bin/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/bin/
+libraries: =/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../lib/:/lib/x86_64-pc-linux-gnu/10.1.0/:/lib/../lib/:/usr/lib/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../:/lib/:/usr/lib/
+
+Compiler stderr:
+ 
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --variable=g_ir_scanner gobject-introspection-1.0` -> 0
+/usr/bin/g-ir-scanner
+Got pkgconfig variable g_ir_scanner : /usr/bin/g-ir-scanner
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --variable=g_ir_compiler gobject-introspection-1.0` -> 0
+/usr/bin/g-ir-compiler
+Got pkgconfig variable g_ir_compiler : /usr/bin/g-ir-compiler
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --variable=girdir gio-unix-2.0` -> 0
+
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --print-variables gio-unix-2.0` -> 0
+includedir
+libdir
+prefix
+pcfiledir
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --variable=girdir glib-2.0` -> 0
+
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --print-variables glib-2.0` -> 0
+glib_mkenums
+gobject_query
+glib_genmarshal
+bindir
+includedir
+libdir
+prefix
+pcfiledir
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --variable=girdir gobject-2.0` -> 0
+
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --print-variables gobject-2.0` -> 0
+includedir
+libdir
+prefix
+pcfiledir
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --variable=girdir gusb` -> 0
+
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --print-variables gusb` -> 0
+includedir
+libdir
+prefix
+pcfiledir
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpjx2kg715
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpjx2kg715/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpjx2kg715/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 --print-search-dirs 
+
+Code:
+ 
+Compiler stdout:
+ install: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/
+programs: =/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/bin/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/bin/
+libraries: =/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../lib/:/lib/x86_64-pc-linux-gnu/10.1.0/:/lib/../lib/:/usr/lib/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../:/lib/:/usr/lib/
+
+Compiler stderr:
+ 
+Configuring gtkdocentities.ent using configuration
+Dependency glib-2.0 found: YES 2.64.3 (cached)
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --variable=prefix glib-2.0` -> 0
+/usr
+Got pkgconfig variable prefix : /usr
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+PKG_CONFIG_PATH: 
+PKG_CONFIG_PATH: 
+Got pkgconfig variable girdir : 
+Program sh found: YES (/usr/bin/sh)
+Adding test "virtual-image"
+Program sh found: YES (/usr/bin/sh)
+Adding test "elan"
+Program sh found: YES (/usr/bin/sh)
+Adding test "synaptics"
+Program sh found: YES (/usr/bin/sh)
+Adding test "vfs0050"
+Program sh found: YES (/usr/bin/sh)
+Adding test "vfs5011"
+Configuring test-config.h using configuration
+Program test-runner.sh found: YES (/home/life/Source/fingerprint/libfprint/tests/test-runner.sh)
+Adding test "fpi-device"
+Program test-runner.sh found: YES (/home/life/Source/fingerprint/libfprint/tests/test-runner.sh)
+Adding test "fpi-ssm"
+Program test-runner.sh found: YES (/home/life/Source/fingerprint/libfprint/tests/test-runner.sh)
+Adding test "fpi-assembling"
+Program gdb found: YES (/usr/bin/gdb)
+Program valgrind found: NO
+Build targets in project: 23
+
+Found ninja-1.10.0 at /usr/bin/ninja
+Running compile:
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpv1nem4g0
+Command line:  ccache c++ /home/life/Source/fingerprint/libfprint/build/meson-private/tmpv1nem4g0/testfile.cpp -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpv1nem4g0/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs 
+
+Code:
+ 
+Compiler stdout:
+ install: /usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/
+programs: =/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/bin/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/bin/
+libraries: =/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/lib/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../x86_64-pc-linux-gnu/10.1.0/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../lib/:/lib/x86_64-pc-linux-gnu/10.1.0/:/lib/../lib/:/usr/lib/x86_64-pc-linux-gnu/10.1.0/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../../x86_64-pc-linux-gnu/lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/10.1.0/../../../:/lib/:/usr/lib/
+
+Compiler stderr:
+ 
+None of 'STRIP' are defined in the environment, not changing global flags.
+None of 'STRIP' are defined in the environment, not changing global flags.

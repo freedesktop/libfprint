@@ -1,0 +1,8 @@
+<!ENTITY package "libfprint-2">
+<!ENTITY package_bugreport "https://gitlab.freedesktop.org/libfprint/libfprint/issues">
+<!ENTITY package_name "libfprint-2">
+<!ENTITY package_string "libfprint-2">
+<!ENTITY package_tarname "libfprint-1.90.2">
+<!ENTITY package_url "https://fprint.freedesktop.org/">
+<!ENTITY package_version "1.90.2">
+<!ENTITY package_api_version "1.0">

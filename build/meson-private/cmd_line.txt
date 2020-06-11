@@ -1,0 +1,6 @@
+[options]
+drivers = vfs7552
+backend = ninja
+
+[properties]
+
