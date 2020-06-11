@@ -1,4 +1,4 @@
-Build started at 2020-06-11T00:36:22.399836
+Build started at 2020-06-11T12:48:10.714817
 Main binary: /usr/bin/python
 Build Options: -Ddrivers=vfs7552 -Dbackend=ninja
 Python system: Linux
@@ -28,8 +28,8 @@ Host machine cpu: x86_64
 Target machine cpu family: x86_64
 Target machine cpu: x86_64
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmph2jm2dq8
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmph2jm2dq8/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmph2jm2dq8/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wall 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9j8g4rz3
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9j8g4rz3/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9j8g4rz3/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wall 
 
 Code:
  int i;
@@ -40,8 +40,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wall: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpbu6acbqb
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpbu6acbqb/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpbu6acbqb/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wcast-align 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmph7qdyw1q
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmph7qdyw1q/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmph7qdyw1q/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wcast-align 
 
 Code:
  int i;
@@ -52,8 +52,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wcast-align: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfeef2r5i
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfeef2r5i/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfeef2r5i/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wformat-nonliteral 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp7fmrpfql
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp7fmrpfql/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp7fmrpfql/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wformat-nonliteral 
 
 Code:
  int i;
@@ -65,8 +65,8 @@ Compiler stderr:
 
 Compiler for C supports arguments -Wformat-nonliteral: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpghb_3t5_
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpghb_3t5_/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpghb_3t5_/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wformat-security 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi6o9o8n1
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi6o9o8n1/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi6o9o8n1/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wformat-security 
 
 Code:
  int i;
@@ -78,8 +78,8 @@ Compiler stderr:
 
 Compiler for C supports arguments -Wformat-security: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1i0skeqj
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1i0skeqj/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1i0skeqj/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wformat=2 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpm30tgi6v
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpm30tgi6v/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpm30tgi6v/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wformat=2 
 
 Code:
  int i;
@@ -90,8 +90,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wformat=2: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp2smes5rp
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp2smes5rp/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp2smes5rp/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wignored-qualifiers 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpj1kbm63b
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpj1kbm63b/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpj1kbm63b/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wignored-qualifiers 
 
 Code:
  int i;
@@ -102,8 +102,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wignored-qualifiers: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpqvd_2ee4
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpqvd_2ee4/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpqvd_2ee4/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wlogical-op 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5lkx1h01
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5lkx1h01/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5lkx1h01/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wlogical-op 
 
 Code:
  int i;
@@ -114,8 +114,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wlogical-op: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp7qobknwy
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp7qobknwy/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp7qobknwy/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-declarations 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp7qirb4j
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp7qirb4j/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp7qirb4j/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-declarations 
 
 Code:
  int i;
@@ -126,8 +126,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wmissing-declarations: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpttwmlyh5
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpttwmlyh5/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpttwmlyh5/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-format-attribute 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpnjfdx_2b
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpnjfdx_2b/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpnjfdx_2b/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-format-attribute 
 
 Code:
  int i;
@@ -138,8 +138,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wmissing-format-attribute: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmphmd6u3iy
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmphmd6u3iy/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmphmd6u3iy/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-include-dirs 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_a1v4mqx
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_a1v4mqx/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_a1v4mqx/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-include-dirs 
 
 Code:
  int i;
@@ -150,8 +150,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wmissing-include-dirs: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi2t834k2
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi2t834k2/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi2t834k2/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-noreturn 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp3rytg_2l
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp3rytg_2l/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp3rytg_2l/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-noreturn 
 
 Code:
  int i;
@@ -162,8 +162,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wmissing-noreturn: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxe0q8emw
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxe0q8emw/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxe0q8emw/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wpointer-arith 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmppktuvy99
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmppktuvy99/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmppktuvy99/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wpointer-arith 
 
 Code:
  int i;
@@ -174,8 +174,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wpointer-arith: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpiumw57ar
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpiumw57ar/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpiumw57ar/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wshadow 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_92h4k4s
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_92h4k4s/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_92h4k4s/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wshadow 
 
 Code:
  int i;
@@ -186,8 +186,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wshadow: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpq_ip9prf
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpq_ip9prf/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpq_ip9prf/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wtype-limits 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpziu6rv19
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpziu6rv19/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpziu6rv19/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wtype-limits 
 
 Code:
  int i;
@@ -198,8 +198,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wtype-limits: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9udq3bmp
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9udq3bmp/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9udq3bmp/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wundef 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp297yujrf
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp297yujrf/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp297yujrf/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wundef 
 
 Code:
  int i;
@@ -210,8 +210,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wundef: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpelgu7ft3
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpelgu7ft3/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpelgu7ft3/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wunused 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp581lyoh5
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp581lyoh5/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp581lyoh5/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wunused 
 
 Code:
  int i;
@@ -222,8 +222,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wunused: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk_8dvr_g
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk_8dvr_g/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk_8dvr_g/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=address 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpykcfy4bo
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpykcfy4bo/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpykcfy4bo/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=address 
 
 Code:
  int i;
@@ -234,8 +234,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=address: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_auvz2uy
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_auvz2uy/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_auvz2uy/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=array-bounds 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpuy_5r31k
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpuy_5r31k/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpuy_5r31k/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=array-bounds 
 
 Code:
  int i;
@@ -246,8 +246,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=array-bounds: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpaclu36jh
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpaclu36jh/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpaclu36jh/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=empty-body 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1wk5lu3t
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1wk5lu3t/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1wk5lu3t/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=empty-body 
 
 Code:
  int i;
@@ -258,8 +258,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=empty-body: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfhpucwb3
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfhpucwb3/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpfhpucwb3/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=init-self 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp654mzpgv
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp654mzpgv/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp654mzpgv/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=init-self 
 
 Code:
  int i;
@@ -270,8 +270,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=init-self: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp78mzxo59
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp78mzxo59/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp78mzxo59/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=int-to-pointer-cast 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcahy4uz5
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcahy4uz5/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcahy4uz5/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=int-to-pointer-cast 
 
 Code:
  int i;
@@ -282,8 +282,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=int-to-pointer-cast: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw0_gieet
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw0_gieet/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw0_gieet/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=main 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp3wsqdrut
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp3wsqdrut/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp3wsqdrut/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=main 
 
 Code:
  int i;
@@ -294,8 +294,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=main: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpmw0f4a8l
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpmw0f4a8l/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpmw0f4a8l/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=missing-braces 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmph6xbn7cw
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmph6xbn7cw/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmph6xbn7cw/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=missing-braces 
 
 Code:
  int i;
@@ -306,8 +306,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=missing-braces: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp35bk92xf
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp35bk92xf/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp35bk92xf/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=nonnull 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpwe9kal3f
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpwe9kal3f/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpwe9kal3f/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=nonnull 
 
 Code:
  int i;
@@ -318,8 +318,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=nonnull: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6fzlrffx
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6fzlrffx/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6fzlrffx/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=redundant-decls 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpgogkhr78
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpgogkhr78/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpgogkhr78/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=redundant-decls 
 
 Code:
  int i;
@@ -330,8 +330,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=redundant-decls: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpktvyzuda
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpktvyzuda/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpktvyzuda/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=return-type 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmplgpfal_u
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmplgpfal_u/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmplgpfal_u/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=return-type 
 
 Code:
  int i;
@@ -342,8 +342,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=return-type: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcfvcbbh6
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcfvcbbh6/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcfvcbbh6/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=sequence-point 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpr92k9ee3
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpr92k9ee3/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpr92k9ee3/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=sequence-point 
 
 Code:
  int i;
@@ -354,8 +354,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=sequence-point: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5cd0ykvh
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5cd0ykvh/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5cd0ykvh/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=trigraphs 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcmhm1ql0
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcmhm1ql0/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcmhm1ql0/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=trigraphs 
 
 Code:
  int i;
@@ -366,8 +366,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=trigraphs: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpsi3tt4fm
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpsi3tt4fm/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpsi3tt4fm/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=write-strings 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpa56r8mfq
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpa56r8mfq/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpa56r8mfq/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=write-strings 
 
 Code:
  int i;
@@ -378,8 +378,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=write-strings: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1o8vw6fr
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1o8vw6fr/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1o8vw6fr/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fno-strict-aliasing 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpchcyyqo8
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpchcyyqo8/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpchcyyqo8/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fno-strict-aliasing 
 
 Code:
  int i;
@@ -390,8 +390,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -fno-strict-aliasing: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcpstobb4
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcpstobb4/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpcpstobb4/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpc5hmcijl
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpc5hmcijl/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpc5hmcijl/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56 
 
 Code:
  int i;
@@ -402,8 +402,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpm26_eayn
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpm26_eayn/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpm26_eayn/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_56 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpqwj0520y
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpqwj0520y/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpqwj0520y/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_56 
 
 Code:
  int i;
@@ -414,8 +414,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_56: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk3xuz3qk
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk3xuz3qk/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpk3xuz3qk/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -D_GNU_SOURCE 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpuzz_skok
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpuzz_skok/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpuzz_skok/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -D_GNU_SOURCE 
 
 Code:
  int i;
@@ -426,8 +426,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -D_GNU_SOURCE: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_p06k411
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_p06k411/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp_p06k411/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -DG_LOG_DOMAIN="libfprint" 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9f07fy5k
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9f07fy5k/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9f07fy5k/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -DG_LOG_DOMAIN="libfprint" 
 
 Code:
  int i;
@@ -438,8 +438,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -DG_LOG_DOMAIN="libfprint": YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5lq0vubt
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5lq0vubt/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp5lq0vubt/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wimplicit-function-declaration 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxs15d5uc
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxs15d5uc/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxs15d5uc/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wimplicit-function-declaration 
 
 Code:
  int i;
@@ -450,8 +450,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wimplicit-function-declaration: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpwnfpgku8
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpwnfpgku8/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpwnfpgku8/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-prototypes 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp2_n6kkj5
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp2_n6kkj5/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp2_n6kkj5/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wmissing-prototypes 
 
 Code:
  int i;
@@ -462,8 +462,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wmissing-prototypes: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw6h5lrie
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw6h5lrie/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpw6h5lrie/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wnested-externs 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp8zk4n382
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp8zk4n382/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp8zk4n382/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wnested-externs 
 
 Code:
  int i;
@@ -474,8 +474,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wnested-externs: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1al5f3w_
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1al5f3w_/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp1al5f3w_/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wold-style-definition 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0ovshfu3
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0ovshfu3/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0ovshfu3/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wold-style-definition 
 
 Code:
  int i;
@@ -486,8 +486,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wold-style-definition: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp98da_opm
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp98da_opm/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp98da_opm/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wstrict-prototypes 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp8dpyye3z
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp8dpyye3z/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp8dpyye3z/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wstrict-prototypes 
 
 Code:
  int i;
@@ -498,8 +498,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wstrict-prototypes: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0uhq1sfj
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0uhq1sfj/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0uhq1sfj/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=implicit 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi9qrp7ph
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi9qrp7ph/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpi9qrp7ph/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=implicit 
 
 Code:
  int i;
@@ -510,8 +510,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=implicit: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpernh28tg
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpernh28tg/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpernh28tg/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=pointer-to-int-cast 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpe49rcf80
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpe49rcf80/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpe49rcf80/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=pointer-to-int-cast 
 
 Code:
  int i;
@@ -528,8 +528,8 @@ Dependency gio-unix-2.0 found: YES 2.64.3 (cached)
 Dependency gobject-2.0 found: YES 2.64.3 (cached)
 Dependency gusb found: YES 0.3.4 (cached)
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6j6k45lc
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6j6k45lc/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp6j6k45lc/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -Wl,--start-group -lm -Wl,--end-group -Wl,--allow-shlib-undefined 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9yis3y7a
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9yis3y7a/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp9yis3y7a/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -Wl,--start-group -lm -Wl,--end-group -Wl,--allow-shlib-undefined 
 
 Code:
  int main(void) { return 0; }
@@ -584,8 +584,8 @@ fpi_get_driver_types (void)
 
 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxt0e18v8
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxt0e18v8/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpxt0e18v8/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-error=redundant-decls -Werror=redundant-decls 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmphrogn_j8
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmphrogn_j8/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmphrogn_j8/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-error=redundant-decls -Werror=redundant-decls 
 
 Code:
  int i;
@@ -596,8 +596,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wno-error=redundant-decls -Werror=redundant-decls: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpnadheohf
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpnadheohf/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpnadheohf/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-redundant-decls -Wredundant-decls 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpknqi_the
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpknqi_the/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpknqi_the/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-redundant-decls -Wredundant-decls 
 
 Code:
  int i;
@@ -608,8 +608,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wno-redundant-decls -Wredundant-decls: YES 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpn8wn4mhk
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpn8wn4mhk/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpn8wn4mhk/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-discarded-qualifiers -Wdiscarded-qualifiers 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp63qycp18
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp63qycp18/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp63qycp18/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-discarded-qualifiers -Wdiscarded-qualifiers 
 
 Code:
  int i;
@@ -640,8 +640,8 @@ Called `/usr/bin/pkg-config gobject-introspection-1.0 --libs` -> 0
 -lgirepository-1.0 -lgobject-2.0 -lglib-2.0
 None of 'PKG_CONFIG_PATH' are defined in the environment, not changing global flags.
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpl56lweqm
-Command line:  ccache c++ /home/life/Source/fingerprint/libfprint/build/meson-private/tmpl56lweqm/testfile.cpp -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpl56lweqm/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -fpermissive 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp12sot82
+Command line:  ccache c++ /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp12sot82/testfile.cpp -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp12sot82/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -fpermissive 
 
 Code:
  #include<stdio.h>
@@ -662,8 +662,8 @@ Program stderr:
 
 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp9492v1v
-Command line:  ccache c++ /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp9492v1v/testfile.cpp -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp9492v1v/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp89ebc9u1
+Command line:  ccache c++ /home/life/Source/fingerprint/libfprint/build/meson-private/tmp89ebc9u1/testfile.cpp -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp89ebc9u1/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs 
 
 Code:
  
@@ -757,8 +757,8 @@ PKG_CONFIG_PATH:
 PKG_CONFIG_PATH: 
 Got pkgconfig variable girdir : 
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpjx2kg715
-Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmpjx2kg715/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpjx2kg715/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 --print-search-dirs 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0gvvu6z0
+Command line:  ccache cc /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0gvvu6z0/testfile.c -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmp0gvvu6z0/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 --print-search-dirs 
 
 Code:
  
@@ -822,8 +822,8 @@ Build targets in project: 23
 
 Found ninja-1.10.0 at /usr/bin/ninja
 Running compile:
-Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpv1nem4g0
-Command line:  ccache c++ /home/life/Source/fingerprint/libfprint/build/meson-private/tmpv1nem4g0/testfile.cpp -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpv1nem4g0/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs 
+Working directory:  /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp73r_0k6
+Command line:  ccache c++ /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp73r_0k6/testfile.cpp -o /home/life/Source/fingerprint/libfprint/build/meson-private/tmpp73r_0k6/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fpermissive --print-search-dirs 
 
 Code:
  

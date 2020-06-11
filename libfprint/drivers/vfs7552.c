@@ -64,6 +64,14 @@ struct usb_action
         .data = EXPECTED,                    \
         .correct_reply_size = sizeof(EXPECTED)},
 
+#define RECV_CHECK_SIZE(ENDPOINT, SIZE, EXPECTED) \
+    {                                             \
+        .type = ACTION_RECEIVE,                   \
+        .endpoint = ENDPOINT,                     \
+        .size = SIZE,                             \
+        .data = NULL,                             \
+        .correct_reply_size = sizeof(EXPECTED)},
+
 struct usbexchange_data
 {
     int stepcount;
@@ -73,6 +81,134 @@ struct usbexchange_data
     int timeout;
 };
 
+/* =============== USB Communication State Machine ================ */
+
+static void
+async_send_cb (FpiUsbTransfer *transfer, FpDevice *device,
+               gpointer user_data, GError *error)
+{
+  struct usbexchange_data *data = fpi_ssm_get_data (transfer->ssm);
+  struct usb_action *action;
+
+  g_assert (!(fpi_ssm_get_cur_state (transfer->ssm) >= data->stepcount));
+
+  action = &data->actions[fpi_ssm_get_cur_state (transfer->ssm)];
+  g_assert (!(action->type != ACTION_SEND));
+
+  if (error)
+    {
+      /* Transfer not completed, return IO error */
+      fpi_ssm_mark_failed (transfer->ssm, error);
+      return;
+    }
+
+  /* success */
+  fpi_ssm_next_state (transfer->ssm);
+}
+
+static void
+async_recv_cb (FpiUsbTransfer *transfer, FpDevice *device,
+               gpointer user_data, GError *error)
+{
+  struct usbexchange_data *data = fpi_ssm_get_data (transfer->ssm);
+  struct usb_action *action;
+
+  if (error)
+    {
+      /* Transfer not completed, return IO error */
+      fpi_ssm_mark_failed (transfer->ssm, error);
+      return;
+    }
+
+  g_assert (!(fpi_ssm_get_cur_state (transfer->ssm) >= data->stepcount));
+
+  action = &data->actions[fpi_ssm_get_cur_state (transfer->ssm)];
+  g_assert (!(action->type != ACTION_RECEIVE));
+
+  if (action->data != NULL)
+    {
+      if (transfer->actual_length != action->correct_reply_size)
+        {
+          fp_err ("Got %d bytes instead of %d",
+                  (gint) transfer->actual_length,
+                  action->correct_reply_size);
+          fpi_ssm_mark_failed (transfer->ssm, fpi_device_error_new (FP_DEVICE_ERROR_GENERAL));
+          return;
+        }
+      if (memcmp (transfer->buffer, action->data,
+                  action->correct_reply_size) != 0)
+        {
+          fp_dbg ("Wrong reply:");
+          fpi_ssm_mark_failed (transfer->ssm, fpi_device_error_new (FP_DEVICE_ERROR_GENERAL));
+          return;
+        }
+    }
+  else
+    {
+      fp_dbg ("Got %d bytes out of %d",
+              (gint) transfer->actual_length,
+              (gint) transfer->length);
+    }
+
+  fpi_ssm_next_state (transfer->ssm);
+}
+
+static void
+usbexchange_loop (FpiSsm *ssm, FpDevice *_dev)
+{
+  struct usbexchange_data *data = fpi_ssm_get_data (ssm);
+  struct usb_action *action = &data->actions[fpi_ssm_get_cur_state (ssm)];
+  FpiUsbTransfer *transfer;
+
+  g_assert (fpi_ssm_get_cur_state (ssm) < data->stepcount);
+
+  switch (action->type)
+    {
+    case ACTION_SEND:
+      fp_dbg ("Sending %s", action->name);
+      transfer = fpi_usb_transfer_new (_dev);
+      fpi_usb_transfer_fill_bulk_full (transfer, action->endpoint,
+                                       action->data, action->size,
+                                       NULL);
+      transfer->ssm = ssm;
+      transfer->short_is_error = TRUE;
+      fpi_usb_transfer_submit (transfer, data->timeout, NULL,
+                               async_send_cb, NULL);
+      break;
+
+    case ACTION_RECEIVE:
+      fp_dbg ("Receiving %d bytes", action->size);
+      transfer = fpi_usb_transfer_new (_dev);
+      fpi_usb_transfer_fill_bulk_full (transfer, action->endpoint,
+                                       data->receive_buf,
+                                       action->size, NULL);
+      transfer->ssm = ssm;
+      fpi_usb_transfer_submit (transfer, data->timeout, NULL,
+                               async_recv_cb, NULL);
+      break;
+
+    default:
+      fp_err ("Bug detected: invalid action %d", action->type);
+      fpi_ssm_mark_failed (ssm, fpi_device_error_new (FP_DEVICE_ERROR_GENERAL));
+      return;
+    }
+}
+
+static void
+usb_exchange_async (FpiSsm                  *ssm,
+                    struct usbexchange_data *data,
+                    const char              *exchange_name)
+{
+  FpiSsm *subsm = fpi_ssm_new_full (FP_DEVICE (data->device),
+                                    usbexchange_loop,
+                                    data->stepcount,
+                                    exchange_name);
+
+  fpi_ssm_set_data (subsm, data, NULL);
+  fpi_ssm_start_subsm (ssm, subsm);
+}
+
+/* ================== Class Definition =================== */
 struct _FpDeviceVfs7552
 {
     FpImageDevice parent;
@@ -94,16 +230,108 @@ G_DECLARE_FINAL_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FPI, DEVICE_VFS7552,
                      FpImageDevice);
 G_DEFINE_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FP_TYPE_IMAGE_DEVICE);
 
+enum {
+	DEV_OPEN_START,
+	DEV_OPEN_NUM_STATES
+};
+
+struct usb_action vfs7552_initialization[] = {
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_cmd_01)
+    RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 64, vfs7552_cmd_01_recv)
+    
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_cmd_19)
+    RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 128, vfs7552_cmd_19_recv)
+    
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_00)
+    RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
+    
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_01)
+    RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
+    
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_02)
+    RECV_CHECK(VFS7552_IN_ENDPOINT, 64, vfs7552_init_02_recv)
+    
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_03)
+    RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 64, vfs7552_init_03_recv)
+    
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_04)
+    RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
+	/*
+	 * Windows driver does this and it works
+	 * But in this driver this call never returns...
+	 * RECV(VFS7552_IN_ENDPOINT_CTRL2, 8)
+	 */
+};
+
+static void
+open_loop(FpiSsm *ssm, FpDevice *_dev)
+{
+    fp_dbg("--> open_loop");
+    FpImageDevice *dev = FP_IMAGE_DEVICE (_dev);
+    FpDeviceVfs7552 *self;
+
+    self = FPI_DEVICE_VFS7552 (_dev);
+
+    switch (fpi_ssm_get_cur_state (ssm))
+    {
+        case DEV_OPEN_START:
+            self->init_sequence.stepcount =
+                G_N_ELEMENTS (vfs7552_initialization);
+            self->init_sequence.actions = vfs7552_initialization;
+            self->init_sequence.device = dev;
+            self->init_sequence.receive_buf =
+                g_malloc0 (VFS7552_RECEIVE_BUF_SIZE);
+            self->init_sequence.timeout = VFS7552_DEFAULT_WAIT_TIMEOUT;
+            usb_exchange_async (ssm, &self->init_sequence, "DEVICE OPEN");
+            break;
+    }
+}
+
+static void
+open_loop_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
+{
+    fp_dbg("--> open_loop_complete");
+    FpImageDevice *dev = FP_IMAGE_DEVICE (_dev);
+    FpDeviceVfs7552 *self;
+
+    self = FPI_DEVICE_VFS7552 (_dev);
+    g_free (self->init_sequence.receive_buf);
+    self->init_sequence.receive_buf = NULL;
+
+    fpi_image_device_open_complete (dev, error);
+}
+
+/* ================== Driver Entrypoints =================== */
+
 static void
 dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
 {
     fp_dbg("--> dev_change_state");
 }
 
+/**
+ * This is the first entrypoint that's called by libfprint. Here we claim the interface and start
+ * the open loop.
+ */
 static void
 dev_open(FpImageDevice *dev)
 {
     fp_dbg("--> dev_open");
+    FpiSsm *ssm;
+    GError *error = NULL;
+    FpDeviceVfs7552 *self;
+
+    self = FPI_DEVICE_VFS7552(dev);
+    self->capture_buffer = g_new0(unsigned char, VFS7552_RECEIVE_BUF_SIZE);
+
+    if (!g_usb_device_claim_interface(fpi_device_get_usb_device(FP_DEVICE(dev)), 0, 0, &error))
+    {
+        fpi_image_device_open_complete(dev, error);
+        return;
+    }
+
+    ssm = fpi_ssm_new(FP_DEVICE(dev), open_loop, DEV_OPEN_NUM_STATES);
+    fpi_ssm_start(ssm, open_loop_complete);
 }
 
 static void
@@ -112,6 +340,9 @@ dev_close(FpImageDevice *dev)
     fp_dbg("--> dev_close");
 }
 
+/**
+ * The second step after opening the connection to the device is the device activation.
+ */
 static void
 dev_activate(FpImageDevice *dev)
 {
