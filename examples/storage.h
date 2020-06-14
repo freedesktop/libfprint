@@ -28,3 +28,5 @@ FpPrint * print_create_template (FpDevice *dev,
                                  FpFinger  finger);
 gboolean print_image_save (FpPrint    *print,
                            const char *path);
+gboolean save_image_to_pgm (FpImage    *img,
+                            const char *path);

@@ -1,5 +1,5 @@
 
-examples = [ 'enroll', 'verify', 'manage-prints' ]
+examples = [ 'enroll', 'verify', 'manage-prints', 'img-capture' ]
 foreach example: examples
     executable(example,
         [ example + '.c', 'storage.c', 'utilities.c' ],

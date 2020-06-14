@@ -180,7 +180,7 @@ print_create_template (FpDevice *dev, FpFinger finger)
 }
 
 
-static gboolean
+gboolean
 save_image_to_pgm (FpImage *img, const char *path)
 {
   FILE *fd = fopen (path, "w");
