@@ -81,7 +81,7 @@ struct usbexchange_data
     int timeout;
 };
 
-/* =============== USB Communication State Machine ================ */
+/* ================== USB Communication ================== */
 
 static void
 async_send_cb (FpiUsbTransfer *transfer, FpDevice *device,
@@ -231,8 +231,8 @@ G_DECLARE_FINAL_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FPI, DEVICE_VFS7552,
 G_DEFINE_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FP_TYPE_IMAGE_DEVICE);
 
 enum {
-	DEV_OPEN_START,
-	DEV_OPEN_NUM_STATES
+    DEV_OPEN_START,
+    DEV_OPEN_NUM_STATES
 };
 
 struct usb_action vfs7552_initialization[] = {
@@ -256,11 +256,11 @@ struct usb_action vfs7552_initialization[] = {
     
     SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_04)
     RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
-	/*
-	 * Windows driver does this and it works
-	 * But in this driver this call never returns...
-	 * RECV(VFS7552_IN_ENDPOINT_CTRL2, 8)
-	 */
+    /*
+     * Windows driver does this and it works
+     * But in this driver this call never returns...
+     * RECV(VFS7552_IN_ENDPOINT_CTRL2, 8)
+     */
 };
 
 static void
@@ -307,7 +307,59 @@ static void
 dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
 {
     fp_dbg("--> dev_change_state");
+    FpiSsm *ssm;
+
+    switch (state) {
+      case FPI_IMAGE_DEVICE_STATE_INACTIVE:
+        // This state is never used...
+        fp_dbg("== FPI_IMAGE_DEVICE_STATE_INACTIVE");
+        break;
+      case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON:
+        fp_dbg("== FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON");
+        // This state is called after activation completed or another enroll stage started
+        //ssm = fpi_ssm_new(FP_DEVICE(dev), open_loop, DEV_OPEN_NUM_STATES);
+        //fpi_ssm_start(ssm, open_loop_complete);
+        break;
+      case FPI_IMAGE_DEVICE_STATE_CAPTURE:
+        fp_dbg("== FPI_IMAGE_DEVICE_STATE_CAPTURE");
+        break;
+      case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF:
+        fp_dbg("== FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF");
+        break;
+      default:
+        fp_err("unrecognised state %d", state);
+    }
 }
+
+/*
+static int execute_state_change(struct fp_img_dev *dev){
+	struct vfs7552_data *data = (struct vfs7552_data *)dev->priv;
+  struct fpi_ssm *ssm;
+
+  fp_dbg("state %d", data->activate_state);
+  switch (data->activate_state) {
+  case IMGDEV_STATE_INACTIVE:
+    // This state is never used...
+    break;
+  case IMGDEV_STATE_AWAIT_FINGER_ON:
+    ssm = fpi_ssm_new(dev->dev, await_finger_on_run_state, AWAIT_FINGER_ON_NUM_STATES);
+    ssm->priv = dev;
+		fpi_ssm_start(ssm, report_finger_on); // await_finger_on_complete
+		break;
+  case IMGDEV_STATE_CAPTURE:
+    ssm = fpi_ssm_new(dev->dev, capture_run_state, CAPTURE_NUM_STATES);
+    ssm->priv = dev;
+    fpi_ssm_start(ssm, submit_image); // await_finger_on_complete
+    break;
+  case IMGDEV_STATE_AWAIT_FINGER_OFF:
+    ssm = fpi_ssm_new(dev->dev, capture_run_state, CAPTURE_NUM_STATES);
+    ssm->priv = dev;
+    fpi_ssm_start(ssm, report_finger_off); // await_finger_on_complete
+    break;
+  }
+  return 0;
+}
+*/
 
 /**
  * This is the first entrypoint that's called by libfprint. Here we claim the interface and start
@@ -324,6 +376,12 @@ dev_open(FpImageDevice *dev)
     self = FPI_DEVICE_VFS7552(dev);
     self->capture_buffer = g_new0(unsigned char, VFS7552_RECEIVE_BUF_SIZE);
 
+    // First we need to reset the device, otherwise opening will fail at state 13
+	if (!g_usb_device_reset(fpi_device_get_usb_device(FP_DEVICE(dev)), &error)) {
+		fpi_image_device_open_complete(dev, error);
+		return;
+	}
+
     if (!g_usb_device_claim_interface(fpi_device_get_usb_device(FP_DEVICE(dev)), 0, 0, &error))
     {
         fpi_image_device_open_complete(dev, error);
@@ -338,6 +396,16 @@ static void
 dev_close(FpImageDevice *dev)
 {
     fp_dbg("--> dev_close");
+    GError *error = NULL;
+    FpDeviceVfs7552 *self = FPI_DEVICE_VFS7552 (dev);
+
+    g_usb_device_release_interface (fpi_device_get_usb_device (FP_DEVICE (dev)),
+                                    0, 0, &error);
+
+    g_free (self->capture_buffer);
+    g_slist_free_full (self->rows, g_free);
+
+    fpi_image_device_close_complete (dev, error);
 }
 
 /**
@@ -347,12 +415,25 @@ static void
 dev_activate(FpImageDevice *dev)
 {
     fp_dbg("--> dev_activate");
+    FpDeviceVfs7552 *self;
+
+    self = FPI_DEVICE_VFS7552 (dev);
+    self->deactivating = FALSE;
+
+    fpi_image_device_activate_complete(dev, NULL);
 }
 
 static void
 dev_deactivate(FpImageDevice *dev)
 {
     fp_dbg("--> dev_deactivate");
+    FpDeviceVfs7552 *self;
+
+    self = FPI_DEVICE_VFS7552 (dev);
+    if (self->loop_running)
+      self->deactivating = TRUE;
+    else
+      fpi_image_device_deactivate_complete (dev, NULL);
 }
 
 static const FpIdEntry id_table[] = {
