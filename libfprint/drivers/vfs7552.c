@@ -347,12 +347,16 @@ submit_image(FpiSsm *ssm, FpDevice *_dev, GError *error)
   fp_dbg("--> submit_image");
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
+  FpImage *img;
+  img = fp_image_new(VFS7552_IMAGE_WIDTH,
+                     VFS7552_IMAGE_HEIGHT);
 
   self = FPI_DEVICE_VFS7552(_dev);
   g_free(self->init_sequence.receive_buf);
   self->init_sequence.receive_buf = NULL;
 
-  //fpi_image_device_image_captured(dev, img);
+  memcpy(img->data, self->image, VFS7552_IMAGE_SIZE);
+  fpi_image_device_image_captured(dev, img);
 }
 
 enum
@@ -613,6 +617,30 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
     break;
   case CAPTURE_COMPLETE:
     fp_dbg("== CAPTURE_COMPLETE");
+    if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE)
+    {
+      fpi_ssm_mark_completed(ssm);
+    }
+    else if (self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
+    {
+      int mean = 0;
+      int variance = 0;
+
+      for (int i = 0; i < VFS7552_IMAGE_SIZE; i++)
+        mean = mean + self->image[i];
+      mean = mean / VFS7552_IMAGE_SIZE;
+
+      for (int i = 0; i < VFS7552_IMAGE_SIZE; i++)
+        variance = variance + (self->image[i] - mean) * (self->image[i] - mean);
+      variance = variance / (VFS7552_IMAGE_SIZE - 1);
+
+      fp_dbg("mean = %d, variance = %d\n", mean, variance);
+
+      if (variance < 20)
+        fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
+      else
+        fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
+    }
     break;
   case CAPTURE_DISABLE_SENSOR:
     fp_dbg("== CAPTURE_DISABLE_SENSOR");
