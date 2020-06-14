@@ -232,6 +232,8 @@ G_DECLARE_FINAL_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FPI, DEVICE_VFS7552,
                      FpImageDevice);
 G_DEFINE_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FP_TYPE_IMAGE_DEVICE);
 
+/* ======================= States ======================== */
+
 enum {
     DEV_OPEN_START,
     DEV_OPEN_NUM_STATES
@@ -242,6 +244,17 @@ enum {
   AWAIT_FINGER_ON_INTERRUPT_QUERY,
   AWAIT_FINGER_ON_INTERRUPT_CHECK,
   AWAIT_FINGER_ON_NUM_STATES
+};
+
+enum {
+  CAPTURE_QUERY_DATA_READY,
+  CAPTURE_CHECK_DATA_READY,
+  CAPTURE_REQUEST_CHUNK,
+  CAPTURE_READ_CHUNK,
+  CAPTURE_COMPLETE,
+  CAPTURE_DISABLE_SENSOR,
+  CAPTURE_DISABLE_COMPLETE,
+  CAPTURE_NUM_STATES
 };
 
 /* ============== USB Sequence Definitions =============== */
@@ -332,6 +345,15 @@ report_finger_on(FpiSsm *ssm, FpDevice *_dev, GError *error){
     fpi_ssm_free(ssm);
 }
 
+static void 
+submit_image(FpiSsm *ssm, FpDevice *_dev, GError *error){
+    fp_dbg("--> submit_image");
+    FpImageDevice *dev = FP_IMAGE_DEVICE (_dev);
+
+    //fpi_image_device_image_captured(dev, img);
+    fpi_ssm_free(ssm);
+}
+
 static void
 await_finger_on_run_state(FpiSsm *ssm, FpDevice *_dev) {
     fp_dbg("--> await_finger_on_run_state");
@@ -384,9 +406,129 @@ await_finger_on_run_state(FpiSsm *ssm, FpDevice *_dev) {
             fpi_ssm_next_state(ssm);
         }
         break;
-  }
-
+    }
 }
+
+
+static void
+capture_run_state(FpiSsm *ssm, FpDevice *_dev) {
+    fp_dbg("--> capture_run_state");
+    FpImageDevice *dev = FP_IMAGE_DEVICE (_dev);
+    FpDeviceVfs7552 *self;
+    unsigned char * receive_buf;
+
+    self = FPI_DEVICE_VFS7552 (_dev);
+    switch (fpi_ssm_get_cur_state (ssm)) {
+        case CAPTURE_QUERY_DATA_READY:
+            fp_dbg("== CAPTURE_QUERY_DATA_READY");
+            break;
+        case CAPTURE_CHECK_DATA_READY:
+            fp_dbg("== CAPTURE_CHECK_DATA_READY");
+            break;
+        case CAPTURE_REQUEST_CHUNK:
+            fp_dbg("== CAPTURE_REQUEST_CHUNK");
+            break;
+        case CAPTURE_READ_CHUNK:
+            fp_dbg("== CAPTURE_READ_CHUNK");
+            break;
+        case CAPTURE_COMPLETE:
+            fp_dbg("== CAPTURE_COMPLETE");
+            break;
+        case CAPTURE_DISABLE_SENSOR:
+            fp_dbg("== CAPTURE_DISABLE_SENSOR");
+            break;
+        case CAPTURE_DISABLE_COMPLETE:
+            fp_dbg("== CAPTURE_DISABLE_COMPLETE");
+            break;
+    }
+}
+
+/*
+static void capture_run_state(struct fpi_ssm *ssm){
+  struct fp_img_dev *dev = (struct fp_img_dev*)ssm->priv;
+  struct vfs7552_data *data = (struct vfs7552_data*)dev->priv;
+  unsigned char * receive_buf;
+  int r;
+  fp_dbg("state %d", ssm->cur_state);
+
+  switch (ssm->cur_state){
+  case CAPTURE_QUERY_DATA_READY:
+    data->init_sequence.stepcount =
+      array_n_elements(vfs7552_data_ready_query);
+    data->init_sequence.actions = vfs7552_data_ready_query;
+    data->init_sequence.timeout = 0; // Do not time out
+    usb_exchange_async(ssm, &data->init_sequence);
+    break;
+  case CAPTURE_CHECK_DATA_READY:
+    receive_buf = ((unsigned char *)data->init_sequence.receive_buf);
+    if(receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0]){
+      fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
+    } else if(receive_buf[0] == vfs7552_is_image_ready_resp_ready[0]){
+      capture_init(data);
+      fpi_ssm_next_state(ssm);
+    } else if(receive_buf[0] == vfs7552_is_image_ready_resp_finger_off[0]){
+      fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
+    } else {
+      fp_dbg("Unknown response 0x%02x", receive_buf[0]);
+      r = receive_buf[0];
+      fpi_imgdev_session_error(dev, r);
+      fpi_ssm_mark_aborted(ssm, r);
+    }
+    break;
+  case CAPTURE_REQUEST_CHUNK:
+    fp_dbg("Requesting chunk");
+    data->init_sequence.stepcount =
+      array_n_elements(vfs7552_request_chunk);
+    data->init_sequence.actions = vfs7552_request_chunk;
+    data->init_sequence.timeout = 1000;
+    usb_exchange_async(ssm, &data->init_sequence);
+    break;
+  case CAPTURE_READ_CHUNK:
+    r = capture_chunk_async(data, dev->udev,
+          1000, ssm);
+    if (r != 0) {
+      fp_err("Failed to capture data");
+      fpi_imgdev_session_error(dev, r);
+      fpi_ssm_mark_aborted(ssm, r);
+    }
+    break;
+  case CAPTURE_COMPLETE:
+    if(data->activate_state == IMGDEV_STATE_CAPTURE){
+      fpi_ssm_mark_completed(ssm);
+    } else if(data->activate_state == IMGDEV_STATE_AWAIT_FINGER_OFF){
+      int mean = 0;
+      int variance = 0;
+
+      for(int i = 0; i < VFS7552_IMAGE_SIZE; i++)
+        mean = mean + data->image[i];
+      mean = mean / VFS7552_IMAGE_SIZE;
+
+      for(int i = 0; i < VFS7552_IMAGE_SIZE; i++)
+        variance = variance + (data->image[i] - mean) * (data->image[i] - mean);
+      variance = variance / (VFS7552_IMAGE_SIZE - 1);
+
+      fp_dbg("mean = %d, variance = %d\n", mean, variance);
+
+      if(variance < 20)
+        fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
+      else
+        fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
+    }
+    break;
+
+    case CAPTURE_DISABLE_SENSOR:
+      data->init_sequence.stepcount =
+        array_n_elements(vfs7552_stop_capture);
+      data->init_sequence.actions = vfs7552_stop_capture;
+      data->init_sequence.timeout = 1000;
+      usb_exchange_async(ssm, &data->init_sequence);
+      break;
+    case CAPTURE_DISABLE_COMPLETE:
+      fpi_ssm_mark_completed(ssm);
+      break;
+  }
+}
+*/
 
 /* ================== Driver Entrypoints =================== */
 
@@ -414,6 +556,9 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
         break;
     case FPI_IMAGE_DEVICE_STATE_CAPTURE:
         fp_dbg("== FPI_IMAGE_DEVICE_STATE_CAPTURE");
+        self->dev_state = FPI_IMAGE_DEVICE_STATE_CAPTURE;
+        ssm = fpi_ssm_new(FP_DEVICE(dev), capture_run_state, CAPTURE_NUM_STATES);
+        fpi_ssm_start(ssm, submit_image);
         break;
     case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF:
         fp_dbg("== FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF");
@@ -422,36 +567,6 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
         fp_err("unrecognised state %d", state);
     }
 }
-
-/*
-static int execute_state_change(struct fp_img_dev *dev){
-	struct vfs7552_data *data = (struct vfs7552_data *)dev->priv;
-  struct fpi_ssm *ssm;
-
-  fp_dbg("state %d", data->activate_state);
-  switch (data->activate_state) {
-  case IMGDEV_STATE_INACTIVE:
-    // This state is never used...
-    break;
-  case IMGDEV_STATE_AWAIT_FINGER_ON:
-    ssm = fpi_ssm_new(dev->dev, await_finger_on_run_state, AWAIT_FINGER_ON_NUM_STATES);
-    ssm->priv = dev;
-		fpi_ssm_start(ssm, report_finger_on); // await_finger_on_complete
-		break;
-  case IMGDEV_STATE_CAPTURE:
-    ssm = fpi_ssm_new(dev->dev, capture_run_state, CAPTURE_NUM_STATES);
-    ssm->priv = dev;
-    fpi_ssm_start(ssm, submit_image); // await_finger_on_complete
-    break;
-  case IMGDEV_STATE_AWAIT_FINGER_OFF:
-    ssm = fpi_ssm_new(dev->dev, capture_run_state, CAPTURE_NUM_STATES);
-    ssm->priv = dev;
-    fpi_ssm_start(ssm, report_finger_off); // await_finger_on_complete
-    break;
-  }
-  return 0;
-}
-*/
 
 /**
  * This is the first entrypoint that's called by libfprint. Here we claim the interface and start
