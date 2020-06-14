@@ -220,6 +220,9 @@ struct _FpDeviceVfs7552
   unsigned char *capture_buffer;
   FpiImageDeviceState dev_state;
   GSList *rows;
+  gint image_index;
+  gint chunks_captured;
+
   gboolean loop_running;
   gboolean deactivating;
   struct usbexchange_data init_sequence;
@@ -302,6 +305,16 @@ struct usb_action vfs7552_data_ready_query[] = {
 struct usb_action vfs7552_request_chunk[] = {
   SEND(VFS7552_OUT_ENDPOINT, vfs7552_read_image_chunk)
 };
+
+/* ============= Helper functions ============== */
+
+static void
+capture_init(FpDeviceVfs7552 *self)
+{
+  fp_dbg("--> capture_init");
+  self->image_index = 0;
+  self->chunks_captured = 0;
+}
 
 /* ============= SSM Finalization Functions ============== */
 
@@ -460,6 +473,19 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
     break;
   case CAPTURE_CHECK_DATA_READY:
     fp_dbg("== CAPTURE_CHECK_DATA_READY");
+    receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
+    if(receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0]){
+      fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
+    } else if(receive_buf[0] == vfs7552_is_image_ready_resp_ready[0]){
+      capture_init(self);
+      fpi_ssm_next_state(ssm);
+    } else if(receive_buf[0] == vfs7552_is_image_ready_resp_finger_off[0]){
+      fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
+    } else {
+      fp_dbg("Unknown response 0x%02x", receive_buf[0]);
+      fpi_image_device_session_error(dev, NULL);
+      fpi_ssm_mark_failed(ssm, NULL);
+    }
     break;
   case CAPTURE_REQUEST_CHUNK:
     fp_dbg("== CAPTURE_REQUEST_CHUNK");
