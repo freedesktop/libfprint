@@ -23,6 +23,10 @@
 #include "drivers_api.h"
 #include "vfs7552_proto.h"
 
+#define VFS7552_CONTROL_PIXELS (8)
+#define VFS7552_LINE_SIZE (VFS7552_IMAGE_WIDTH + VFS7552_CONTROL_PIXELS)
+#define VFS7552_IMAGE_CHUNKS (3)
+
 /* =================== sync/async USB transfer sequence ==================== */
 
 enum
@@ -220,12 +224,14 @@ struct _FpDeviceVfs7552
   unsigned char *capture_buffer;
   FpiImageDeviceState dev_state;
   GSList *rows;
+  unsigned char *image;
   gint image_index;
   gint chunks_captured;
 
   gboolean loop_running;
   gboolean deactivating;
   struct usbexchange_data init_sequence;
+  FpiUsbTransfer *flying_transfer;
 };
 
 G_DECLARE_FINAL_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FPI, DEVICE_VFS7552,
@@ -298,23 +304,12 @@ struct usb_action vfs7552_wait_finger_init[] = {
     RECV_CHECK_SIZE(VFS7552_INTERRUPT_ENDPOINT, 8, interrupt_ok)};
 
 struct usb_action vfs7552_data_ready_query[] = {
-  SEND(VFS7552_OUT_ENDPOINT, vfs7552_is_image_ready)
-  RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 64, vfs7552_is_image_ready_resp_ready)
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_is_image_ready)
+        RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 64, vfs7552_is_image_ready_resp_ready)
 
 };
 struct usb_action vfs7552_request_chunk[] = {
-  SEND(VFS7552_OUT_ENDPOINT, vfs7552_read_image_chunk)
-};
-
-/* ============= Helper functions ============== */
-
-static void
-capture_init(FpDeviceVfs7552 *self)
-{
-  fp_dbg("--> capture_init");
-  self->image_index = 0;
-  self->chunks_captured = 0;
-}
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_read_image_chunk)};
 
 /* ============= SSM Finalization Functions ============== */
 
@@ -358,6 +353,113 @@ submit_image(FpiSsm *ssm, FpDevice *_dev, GError *error)
   self->init_sequence.receive_buf = NULL;
 
   //fpi_image_device_image_captured(dev, img);
+}
+
+enum
+{
+  CHUNK_READ_FINISHED,
+  CHUNK_READ_NEED_MORE
+};
+
+static int
+process_chunk(FpDeviceVfs7552 *self, int transferred)
+{
+  // TODO
+  fp_dbg("--> process_chunk");
+  fp_dbg("chunks captured: %d", self->chunks_captured);
+
+  unsigned char *ptr;
+  int n_bytes_in_chunk;
+  int n_lines;
+  int i;
+
+  ptr = self->capture_buffer;
+  n_bytes_in_chunk = ptr[2] + ptr[3] * 256;
+
+  ptr = ptr + 6;
+  n_lines = n_bytes_in_chunk / VFS7552_LINE_SIZE;
+
+  for (i = 0; i < n_lines; i++)
+  {
+    ptr = ptr + 8; // 8 bytes code at the beginning of each line
+    memcpy(&self->image[self->image_index], ptr, VFS7552_IMAGE_WIDTH);
+    ptr = ptr + VFS7552_IMAGE_WIDTH;
+    self->image_index = self->image_index + VFS7552_IMAGE_WIDTH;
+  }
+  self->chunks_captured = self->chunks_captured + 1;
+  if (self->chunks_captured == VFS7552_IMAGE_CHUNKS)
+  {
+    self->image_index = 0;
+    self->chunks_captured = 0;
+    return CHUNK_READ_FINISHED;
+  }
+  return CHUNK_READ_NEED_MORE;
+}
+
+static void
+chunk_capture_callback(FpiUsbTransfer *transfer, FpDevice *device,
+                       gpointer user_data, GError *error)
+{
+  fp_dbg("--> chunk_capture_callback");
+  FpDeviceVfs7552 *self;
+
+  self = FPI_DEVICE_VFS7552(device);
+
+  if (error)
+  {
+    if (!self->deactivating)
+    {
+      fp_err("Failed to capture data");
+      fpi_ssm_mark_failed(transfer->ssm, error);
+    }
+    else
+    {
+      fpi_ssm_mark_completed(transfer->ssm);
+    }
+  }
+  else
+  {
+    if (process_chunk(self, transfer->actual_length) == CHUNK_READ_FINISHED)
+    {
+      fp_dbg("More chunks are required!");
+      fpi_ssm_next_state(transfer->ssm);
+    }
+    else
+    {
+      fpi_ssm_jump_to_state(transfer->ssm, CAPTURE_REQUEST_CHUNK);
+    }
+  }
+
+  self->flying_transfer = NULL;
+}
+
+/* ============= Helper functions ============== */
+
+static void
+capture_init(FpDeviceVfs7552 *self)
+{
+  fp_dbg("--> capture_init");
+  self->image_index = 0;
+  self->chunks_captured = 0;
+}
+
+static void
+capture_chunk_async(FpiSsm *ssm, FpDevice *_dev, guint timeout)
+{
+  fp_dbg("--> capture_chunk_async");
+  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
+  FpDeviceVfs7552 *self;
+
+  self = FPI_DEVICE_VFS7552(_dev);
+  self->flying_transfer = fpi_usb_transfer_new(FP_DEVICE(_dev));
+
+  fpi_usb_transfer_fill_bulk_full(self->flying_transfer, VFS7552_IN_ENDPOINT,
+                                  self->capture_buffer, VFS7552_RECEIVE_BUF_SIZE,
+                                  NULL);
+
+  self->flying_transfer->ssm = ssm;
+  fpi_usb_transfer_submit(self->flying_transfer, timeout, NULL,
+                          chunk_capture_callback, NULL);
 }
 
 /* ================ Delegation Functions ================= */
@@ -474,14 +576,21 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
   case CAPTURE_CHECK_DATA_READY:
     fp_dbg("== CAPTURE_CHECK_DATA_READY");
     receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
-    if(receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0]){
+    if (receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0])
+    {
       fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
-    } else if(receive_buf[0] == vfs7552_is_image_ready_resp_ready[0]){
+    }
+    else if (receive_buf[0] == vfs7552_is_image_ready_resp_ready[0])
+    {
       capture_init(self);
       fpi_ssm_next_state(ssm);
-    } else if(receive_buf[0] == vfs7552_is_image_ready_resp_finger_off[0]){
+    }
+    else if (receive_buf[0] == vfs7552_is_image_ready_resp_finger_off[0])
+    {
       fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
-    } else {
+    }
+    else
+    {
       fp_dbg("Unknown response 0x%02x", receive_buf[0]);
       fpi_image_device_session_error(dev, NULL);
       fpi_ssm_mark_failed(ssm, NULL);
@@ -490,7 +599,7 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
   case CAPTURE_REQUEST_CHUNK:
     fp_dbg("== CAPTURE_REQUEST_CHUNK");
     self->init_sequence.stepcount =
-      G_N_ELEMENTS(vfs7552_request_chunk);
+        G_N_ELEMENTS(vfs7552_request_chunk);
     self->init_sequence.actions = vfs7552_request_chunk;
     self->init_sequence.device = dev;
     self->init_sequence.receive_buf =
@@ -500,6 +609,7 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
     break;
   case CAPTURE_READ_CHUNK:
     fp_dbg("== CAPTURE_READ_CHUNK");
+    capture_chunk_async(ssm, _dev, 1000);
     break;
   case CAPTURE_COMPLETE:
     fp_dbg("== CAPTURE_COMPLETE");
@@ -652,6 +762,8 @@ dev_open(FpImageDevice *dev)
 
   self = FPI_DEVICE_VFS7552(dev);
   self->capture_buffer = g_new0(unsigned char, VFS7552_RECEIVE_BUF_SIZE);
+  self->image =
+      (unsigned char *)g_malloc0(VFS7552_IMAGE_HEIGHT * VFS7552_IMAGE_WIDTH);
 
   // First we need to reset the device, otherwise opening will fail at state 13
   if (!g_usb_device_reset(fpi_device_get_usb_device(FP_DEVICE(dev)), &error))
