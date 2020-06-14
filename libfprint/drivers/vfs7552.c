@@ -489,6 +489,14 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
     break;
   case CAPTURE_REQUEST_CHUNK:
     fp_dbg("== CAPTURE_REQUEST_CHUNK");
+    self->init_sequence.stepcount =
+      G_N_ELEMENTS(vfs7552_request_chunk);
+    self->init_sequence.actions = vfs7552_request_chunk;
+    self->init_sequence.device = dev;
+    self->init_sequence.receive_buf =
+        g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    self->init_sequence.timeout = 1000;
+    usb_exchange_async(ssm, &self->init_sequence, "REQUEST CHUNK");
     break;
   case CAPTURE_READ_CHUNK:
     fp_dbg("== CAPTURE_READ_CHUNK");
