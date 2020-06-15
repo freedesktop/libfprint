@@ -252,6 +252,12 @@ enum
   AWAIT_FINGER_ON_INIT,
   AWAIT_FINGER_ON_INTERRUPT_QUERY,
   AWAIT_FINGER_ON_INTERRUPT_CHECK,
+  AWAIT_FINGER_ON_QUERY_DATA_READY,
+  AWAIT_FINGER_ON_CHECK_DATA_READY,
+  AWAIT_FINGER_ON_REQUEST_CHUNK,
+  AWAIT_FINGER_ON_READ_CHUNK,
+  AWAIT_FINGER_ON_COMPLETE,
+  AWAIT_FINGER_ON_FINALIZE,
   AWAIT_FINGER_ON_NUM_STATES
 };
 
@@ -433,27 +439,47 @@ chunk_capture_callback(FpiUsbTransfer *transfer, FpDevice *device,
 
   self = FPI_DEVICE_VFS7552(device);
 
-  if (error)
+  if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE || self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
   {
-    if (!self->deactivating)
+    if (error)
+    {
+      if (!self->deactivating)
+      {
+        fp_err("Failed to capture data");
+        fpi_ssm_mark_failed(transfer->ssm, error);
+      }
+      else
+      {
+        fpi_ssm_mark_completed(transfer->ssm);
+      }
+    }
+    else
+    {
+      if (process_chunk(self, transfer->actual_length) == CHUNK_READ_FINISHED)
+      {
+        fpi_ssm_next_state(transfer->ssm);
+      }
+      else
+      {
+        fpi_ssm_jump_to_state(transfer->ssm, CAPTURE_REQUEST_CHUNK);
+      }
+    }
+  } else {
+    if (error)
     {
       fp_err("Failed to capture data");
       fpi_ssm_mark_failed(transfer->ssm, error);
     }
     else
     {
-      fpi_ssm_mark_completed(transfer->ssm);
-    }
-  }
-  else
-  {
-    if (process_chunk(self, transfer->actual_length) == CHUNK_READ_FINISHED)
-    {
-      fpi_ssm_next_state(transfer->ssm);
-    }
-    else
-    {
-      fpi_ssm_jump_to_state(transfer->ssm, CAPTURE_REQUEST_CHUNK);
+      if (process_chunk(self, transfer->actual_length) == CHUNK_READ_FINISHED)
+      {
+        fpi_ssm_next_state(transfer->ssm);
+      }
+      else
+      {
+        fpi_ssm_jump_to_state(transfer->ssm, AWAIT_FINGER_ON_REQUEST_CHUNK);
+      }
     }
   }
 
@@ -574,6 +600,70 @@ await_finger_on_run_state(FpiSsm *ssm, FpDevice *_dev)
       fp_dbg("Unknown response 0x%02x", receive_buf[0]);
       fpi_ssm_next_state(ssm);
     }
+    break;
+  case AWAIT_FINGER_ON_QUERY_DATA_READY:
+    fp_dbg("== AWAIT_FINGER_ON_QUERY_DATA_READY");
+    self->init_sequence.stepcount =
+        G_N_ELEMENTS(vfs7552_data_ready_query);
+    self->init_sequence.actions = vfs7552_data_ready_query;
+    self->init_sequence.device = dev;
+    self->init_sequence.receive_buf =
+        g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    self->init_sequence.timeout = 0; // Do not time out
+    usb_exchange_async(ssm, &self->init_sequence, "QUERY DATA READY");
+    break;
+  case AWAIT_FINGER_ON_CHECK_DATA_READY:
+    fp_dbg("== AWAIT_FINGER_ON_CHECK_DATA_READY");
+    receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
+    if (receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0])
+    {
+      fpi_ssm_jump_to_state(ssm, AWAIT_FINGER_ON_QUERY_DATA_READY);
+    }
+    else if (receive_buf[0] == vfs7552_is_image_ready_resp_ready[0])
+    {
+      capture_init(self);
+      fpi_ssm_next_state(ssm);
+    }
+    else if (receive_buf[0] == vfs7552_is_image_ready_resp_finger_off[0])
+    {
+      fpi_ssm_jump_to_state(ssm, AWAIT_FINGER_ON_FINALIZE);
+    }
+    else
+    {
+      fp_dbg("Unknown response 0x%02x", receive_buf[0]);
+      fpi_image_device_session_error(dev, NULL);
+      fpi_ssm_mark_failed(ssm, NULL);
+    }
+    break;
+  case AWAIT_FINGER_ON_REQUEST_CHUNK:
+    fp_dbg("== AWAIT_FINGER_ON_REQUEST_CHUNK");
+    self->init_sequence.stepcount =
+        G_N_ELEMENTS(vfs7552_request_chunk);
+    self->init_sequence.actions = vfs7552_request_chunk;
+    self->init_sequence.device = dev;
+    self->init_sequence.receive_buf =
+        g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    self->init_sequence.timeout = 1000;
+    usb_exchange_async(ssm, &self->init_sequence, "REQUEST CHUNK");
+    break;
+  case AWAIT_FINGER_ON_READ_CHUNK:
+    fp_dbg("== AWAIT_FINGER_ON_READ_CHUNK");
+    capture_chunk_async(ssm, _dev, 1000);
+    break;
+  case AWAIT_FINGER_ON_COMPLETE:
+    fp_dbg("== AWAIT_FINGER_ON_COMPLETE");
+    gint variance = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
+    fp_dbg("variance = %d\n", variance);
+    // If the finger is placed on the sensor, the variance should ideally increase above a certain
+    // threshold. Otherwise request a new image and test again.
+    if (variance > VARIANCE_THRESHOLD)
+      fpi_ssm_next_state(ssm);
+    else
+      fpi_ssm_jump_to_state(ssm, AWAIT_FINGER_ON_QUERY_DATA_READY);
+    break;
+  case AWAIT_FINGER_ON_FINALIZE:
+    fp_dbg("== AWAIT_FINGER_ON_FINALIZE");
+    fpi_ssm_mark_completed(ssm);
     break;
   }
 }
