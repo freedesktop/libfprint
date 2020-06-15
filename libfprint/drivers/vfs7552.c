@@ -492,7 +492,6 @@ static void
 capture_chunk_async(FpiSsm *ssm, FpDevice *_dev, guint timeout)
 {
   fp_dbg("--> capture_chunk_async");
-  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
 
   self = FPI_DEVICE_VFS7552(_dev);
