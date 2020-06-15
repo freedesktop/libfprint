@@ -98,7 +98,6 @@ struct _FpDeviceVfs7552
   gint image_index;
   gint chunks_captured;
 
-  gboolean loop_running;
   gboolean deactivating;
   struct usbexchange_data init_sequence;
   FpiUsbTransfer *flying_transfer;
@@ -273,6 +272,17 @@ usbexchange_loop(FpiSsm *ssm, FpDevice *_dev)
   struct usb_action *action = &data->actions[fpi_ssm_get_cur_state(ssm)];
   FpiUsbTransfer *transfer;
 
+  FpDeviceVfs7552 *self;
+
+  self = FPI_DEVICE_VFS7552(_dev);
+  if (self->deactivating)
+  {
+    self->deactivating = FALSE;
+    fpi_image_device_deactivate_complete(FP_IMAGE_DEVICE(_dev),
+                                         fpi_device_error_new(FP_DEVICE_ERROR_GENERAL));
+    return;
+  }
+
   g_assert(fpi_ssm_get_cur_state(ssm) < data->stepcount);
 
   switch (action->type)
@@ -375,6 +385,7 @@ report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
   FpDeviceVfs7552 *self;
 
   self = FPI_DEVICE_VFS7552(_dev);
+  self->dev_state = FPI_IMAGE_DEVICE_STATE_INACTIVE;
   g_free(self->init_sequence.receive_buf);
   self->init_sequence.receive_buf = NULL;
 
@@ -428,46 +439,31 @@ chunk_capture_callback(FpiUsbTransfer *transfer, FpDevice *device,
 
   self = FPI_DEVICE_VFS7552(device);
 
-  if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE || self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
+  if (error)
   {
-    if (error)
-    {
-      if (!self->deactivating)
-      {
-        fp_err("Failed to capture data");
-        fpi_ssm_mark_failed(transfer->ssm, error);
-      }
-      else
-      {
-        fpi_ssm_mark_completed(transfer->ssm);
-      }
-    }
-    else
-    {
-      if (process_chunk(self, transfer->actual_length) == CHUNK_READ_FINISHED)
-      {
-        fpi_ssm_next_state(transfer->ssm);
-      }
-      else
-      {
-        fpi_ssm_jump_to_state(transfer->ssm, CAPTURE_REQUEST_CHUNK);
-      }
-    }
-  }
-  else
-  {
-    if (error)
+    if (!self->deactivating)
     {
       fp_err("Failed to capture data");
       fpi_ssm_mark_failed(transfer->ssm, error);
     }
     else
     {
-      if (process_chunk(self, transfer->actual_length) == CHUNK_READ_FINISHED)
+      fpi_ssm_mark_completed(transfer->ssm);
+    }
+  }
+  else
+  {
+    if (process_chunk(self, transfer->actual_length) == CHUNK_READ_FINISHED)
+    {
+      fpi_ssm_next_state(transfer->ssm);
+    }
+    else
+    {
+      if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE || self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
       {
-        fpi_ssm_next_state(transfer->ssm);
+        fpi_ssm_jump_to_state(transfer->ssm, CAPTURE_REQUEST_CHUNK);
       }
-      else
+      else if (self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON)
       {
         fpi_ssm_jump_to_state(transfer->ssm, AWAIT_FINGER_ON_REQUEST_CHUNK);
       }
@@ -745,8 +741,6 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
   switch (state)
   {
   case FPI_IMAGE_DEVICE_STATE_INACTIVE:
-    // This state is never used...
-    break;
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON:
     // This state is called after activation completed or another enroll stage started
     self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
@@ -834,12 +828,21 @@ static void
 dev_deactivate(FpImageDevice *dev)
 {
   FpDeviceVfs7552 *self;
-
   self = FPI_DEVICE_VFS7552(dev);
-  if (self->loop_running)
-    self->deactivating = TRUE;
-  else
+
+  if (self->dev_state == FPI_IMAGE_DEVICE_STATE_INACTIVE)
+  {
+    /* The device is inactive already, complete the operation immediately. */
     fpi_image_device_deactivate_complete(dev, NULL);
+  }
+  else
+  {
+    /* The device is not yet inactive, flag that we are deactivating (and
+       * need to signal back deactivation) and then ensure we will change
+       * to the inactive state eventually. */
+    self->deactivating = TRUE;
+    dev_change_state(dev, FPI_IMAGE_DEVICE_STATE_INACTIVE);
+  }
 }
 
 static const FpIdEntry id_table[] = {
