@@ -28,6 +28,21 @@
 #define VFS7552_IMAGE_CHUNKS (3)
 #define VARIANCE_THRESHOLD 600
 
+static unsigned char
+vfs7552_get_pixel(struct fpi_frame_asmbl_ctx *ctx,
+                  struct fpi_frame *frame, unsigned int x,
+                  unsigned int y)
+{
+  return frame->data[x + y * ctx->frame_width];
+}
+
+static struct fpi_frame_asmbl_ctx assembling_ctx = {
+    .frame_width = 0,
+    .frame_height = 0,
+    .image_width = 0,
+    .get_pixel = vfs7552_get_pixel,
+};
+
 /* =================== sync/async USB transfer sequence ==================== */
 
 enum
@@ -85,137 +100,6 @@ struct usbexchange_data
   void *receive_buf;
   int timeout;
 };
-
-/* ================== USB Communication ================== */
-
-static void
-async_send_cb(FpiUsbTransfer *transfer, FpDevice *device,
-              gpointer user_data, GError *error)
-{
-  fp_dbg("--> async_send_cb");
-  struct usbexchange_data *data = fpi_ssm_get_data(transfer->ssm);
-  struct usb_action *action;
-
-  g_assert(!(fpi_ssm_get_cur_state(transfer->ssm) >= data->stepcount));
-
-  action = &data->actions[fpi_ssm_get_cur_state(transfer->ssm)];
-  g_assert(!(action->type != ACTION_SEND));
-
-  if (error)
-  {
-    /* Transfer not completed, return IO error */
-    fpi_ssm_mark_failed(transfer->ssm, error);
-    return;
-  }
-
-  /* success */
-  fpi_ssm_next_state(transfer->ssm);
-}
-
-static void
-async_recv_cb(FpiUsbTransfer *transfer, FpDevice *device,
-              gpointer user_data, GError *error)
-{
-  fp_dbg("--> async_recv_cb");
-  struct usbexchange_data *data = fpi_ssm_get_data(transfer->ssm);
-  struct usb_action *action;
-
-  if (error)
-  {
-    /* Transfer not completed, return IO error */
-    fpi_ssm_mark_failed(transfer->ssm, error);
-    return;
-  }
-
-  g_assert(!(fpi_ssm_get_cur_state(transfer->ssm) >= data->stepcount));
-
-  action = &data->actions[fpi_ssm_get_cur_state(transfer->ssm)];
-  g_assert(!(action->type != ACTION_RECEIVE));
-
-  if (action->data != NULL)
-  {
-    if (transfer->actual_length != action->correct_reply_size)
-    {
-      fp_err("Got %d bytes instead of %d",
-             (gint)transfer->actual_length,
-             action->correct_reply_size);
-      fpi_ssm_mark_failed(transfer->ssm, fpi_device_error_new(FP_DEVICE_ERROR_GENERAL));
-      return;
-    }
-    if (memcmp(transfer->buffer, action->data,
-               action->correct_reply_size) != 0)
-    {
-      fp_dbg("Wrong reply:");
-      fpi_ssm_mark_failed(transfer->ssm, fpi_device_error_new(FP_DEVICE_ERROR_GENERAL));
-      return;
-    }
-  }
-  else
-  {
-    fp_dbg("Got %d bytes out of %d",
-           (gint)transfer->actual_length,
-           (gint)transfer->length);
-  }
-
-  fpi_ssm_next_state(transfer->ssm);
-}
-
-static void
-usbexchange_loop(FpiSsm *ssm, FpDevice *_dev)
-{
-  fp_dbg("--> usbexchange_loop");
-  struct usbexchange_data *data = fpi_ssm_get_data(ssm);
-  struct usb_action *action = &data->actions[fpi_ssm_get_cur_state(ssm)];
-  FpiUsbTransfer *transfer;
-
-  g_assert(fpi_ssm_get_cur_state(ssm) < data->stepcount);
-
-  switch (action->type)
-  {
-  case ACTION_SEND:
-    fp_dbg("Sending %s", action->name);
-    transfer = fpi_usb_transfer_new(_dev);
-    fpi_usb_transfer_fill_bulk_full(transfer, action->endpoint,
-                                    action->data, action->size,
-                                    NULL);
-    transfer->ssm = ssm;
-    transfer->short_is_error = TRUE;
-    fpi_usb_transfer_submit(transfer, data->timeout, NULL,
-                            async_send_cb, NULL);
-    break;
-
-  case ACTION_RECEIVE:
-    fp_dbg("Receiving %d bytes", action->size);
-    transfer = fpi_usb_transfer_new(_dev);
-    fpi_usb_transfer_fill_bulk_full(transfer, action->endpoint,
-                                    data->receive_buf,
-                                    action->size, NULL);
-    transfer->ssm = ssm;
-    fpi_usb_transfer_submit(transfer, data->timeout, NULL,
-                            async_recv_cb, NULL);
-    break;
-
-  default:
-    fp_err("Bug detected: invalid action %d", action->type);
-    fpi_ssm_mark_failed(ssm, fpi_device_error_new(FP_DEVICE_ERROR_GENERAL));
-    return;
-  }
-}
-
-static void
-usb_exchange_async(FpiSsm *ssm,
-                   struct usbexchange_data *data,
-                   const char *exchange_name)
-{
-  fp_dbg("--> usb_exchange_async");
-  FpiSsm *subsm = fpi_ssm_new_full(FP_DEVICE(data->device),
-                                   usbexchange_loop,
-                                   data->stepcount,
-                                   exchange_name);
-
-  fpi_ssm_set_data(subsm, data, NULL);
-  fpi_ssm_start_subsm(ssm, subsm);
-}
 
 /* ================== Class Definition =================== */
 struct _FpDeviceVfs7552
@@ -325,12 +209,138 @@ struct usb_action vfs7552_data_ready_query[] = {
 struct usb_action vfs7552_request_chunk[] = {
     SEND(VFS7552_OUT_ENDPOINT, vfs7552_read_image_chunk)};
 
+/* ================== USB Communication ================== */
+
+static void
+async_send_cb(FpiUsbTransfer *transfer, FpDevice *device,
+              gpointer user_data, GError *error)
+{
+  struct usbexchange_data *data = fpi_ssm_get_data(transfer->ssm);
+  struct usb_action *action;
+
+  g_assert(!(fpi_ssm_get_cur_state(transfer->ssm) >= data->stepcount));
+
+  action = &data->actions[fpi_ssm_get_cur_state(transfer->ssm)];
+  g_assert(!(action->type != ACTION_SEND));
+
+  if (error)
+  {
+    /* Transfer not completed, return IO error */
+    fpi_ssm_mark_failed(transfer->ssm, error);
+    return;
+  }
+
+  /* success */
+  fpi_ssm_next_state(transfer->ssm);
+}
+
+static void
+async_recv_cb(FpiUsbTransfer *transfer, FpDevice *device,
+              gpointer user_data, GError *error)
+{
+  struct usbexchange_data *data = fpi_ssm_get_data(transfer->ssm);
+  struct usb_action *action;
+
+  if (error)
+  {
+    /* Transfer not completed, return IO error */
+    fpi_ssm_mark_failed(transfer->ssm, error);
+    return;
+  }
+
+  g_assert(!(fpi_ssm_get_cur_state(transfer->ssm) >= data->stepcount));
+
+  action = &data->actions[fpi_ssm_get_cur_state(transfer->ssm)];
+  g_assert(!(action->type != ACTION_RECEIVE));
+
+  if (action->data != NULL)
+  {
+    if (transfer->actual_length != action->correct_reply_size)
+    {
+      fp_err("Got %d bytes instead of %d",
+             (gint)transfer->actual_length,
+             action->correct_reply_size);
+      fpi_ssm_mark_failed(transfer->ssm, fpi_device_error_new(FP_DEVICE_ERROR_GENERAL));
+      return;
+    }
+    if (memcmp(transfer->buffer, action->data,
+               action->correct_reply_size) != 0)
+    {
+      fp_dbg("Wrong reply:");
+      fpi_ssm_mark_failed(transfer->ssm, fpi_device_error_new(FP_DEVICE_ERROR_GENERAL));
+      return;
+    }
+  }
+  else
+  {
+    fp_dbg("Got %d bytes out of %d",
+           (gint)transfer->actual_length,
+           (gint)transfer->length);
+  }
+
+  fpi_ssm_next_state(transfer->ssm);
+}
+
+static void
+usbexchange_loop(FpiSsm *ssm, FpDevice *_dev)
+{
+  struct usbexchange_data *data = fpi_ssm_get_data(ssm);
+  struct usb_action *action = &data->actions[fpi_ssm_get_cur_state(ssm)];
+  FpiUsbTransfer *transfer;
+
+  g_assert(fpi_ssm_get_cur_state(ssm) < data->stepcount);
+
+  switch (action->type)
+  {
+  case ACTION_SEND:
+    fp_dbg("Sending %s", action->name);
+    transfer = fpi_usb_transfer_new(_dev);
+    fpi_usb_transfer_fill_bulk_full(transfer, action->endpoint,
+                                    action->data, action->size,
+                                    NULL);
+    transfer->ssm = ssm;
+    transfer->short_is_error = TRUE;
+    fpi_usb_transfer_submit(transfer, data->timeout, NULL,
+                            async_send_cb, NULL);
+    break;
+
+  case ACTION_RECEIVE:
+    fp_dbg("Receiving %d bytes", action->size);
+    transfer = fpi_usb_transfer_new(_dev);
+    fpi_usb_transfer_fill_bulk_full(transfer, action->endpoint,
+                                    data->receive_buf,
+                                    action->size, NULL);
+    transfer->ssm = ssm;
+    fpi_usb_transfer_submit(transfer, data->timeout, NULL,
+                            async_recv_cb, NULL);
+    break;
+
+  default:
+    fp_err("Bug detected: invalid action %d", action->type);
+    fpi_ssm_mark_failed(ssm, fpi_device_error_new(FP_DEVICE_ERROR_GENERAL));
+    return;
+  }
+}
+
+static void
+usb_exchange_async(FpiSsm *ssm,
+                   struct usbexchange_data *data,
+                   const char *exchange_name)
+{
+  FpiSsm *subsm = fpi_ssm_new_full(FP_DEVICE(data->device),
+                                   usbexchange_loop,
+                                   data->stepcount,
+                                   exchange_name);
+
+  fpi_ssm_set_data(subsm, data, NULL);
+  fpi_ssm_start_subsm(ssm, subsm);
+}
+
 /* ============= SSM Finalization Functions ============== */
 
 static void
 open_loop_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
 {
-  fp_dbg("--> open_loop_complete");
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
 
@@ -344,7 +354,6 @@ open_loop_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
 static void
 report_finger_on(FpiSsm *ssm, FpDevice *_dev, GError *error)
 {
-  fp_dbg("--> report_finger_on");
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
 
@@ -358,7 +367,6 @@ report_finger_on(FpiSsm *ssm, FpDevice *_dev, GError *error)
 static void
 submit_image(FpiSsm *ssm, FpDevice *_dev, GError *error)
 {
-  fp_dbg("--> submit_image");
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   FpImage *img;
@@ -369,8 +377,7 @@ submit_image(FpiSsm *ssm, FpDevice *_dev, GError *error)
   g_free(self->init_sequence.receive_buf);
   self->init_sequence.receive_buf = NULL;
 
-  gint variance = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
-  fp_dbg("variance = %d", variance);
+  fp_dbg("Image captured");
 
   memcpy(img->data, self->image, VFS7552_IMAGE_SIZE);
   fpi_image_device_image_captured(dev, img);
@@ -379,7 +386,6 @@ submit_image(FpiSsm *ssm, FpDevice *_dev, GError *error)
 static void
 report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
 {
-  fp_dbg("--> report_finger_off");
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
 
@@ -401,9 +407,6 @@ enum
 static int
 process_chunk(FpDeviceVfs7552 *self, int transferred)
 {
-  fp_dbg("--> process_chunk");
-  fp_dbg("chunks captured: %d", self->chunks_captured + 1);
-
   unsigned char *ptr;
   int n_bytes_in_chunk;
   int n_lines;
@@ -436,7 +439,6 @@ static void
 chunk_capture_callback(FpiUsbTransfer *transfer, FpDevice *device,
                        gpointer user_data, GError *error)
 {
-  fp_dbg("--> chunk_capture_callback");
   FpDeviceVfs7552 *self;
 
   self = FPI_DEVICE_VFS7552(device);
@@ -466,7 +468,9 @@ chunk_capture_callback(FpiUsbTransfer *transfer, FpDevice *device,
         fpi_ssm_jump_to_state(transfer->ssm, CAPTURE_REQUEST_CHUNK);
       }
     }
-  } else {
+  }
+  else
+  {
     if (error)
     {
       fp_err("Failed to capture data");
@@ -491,7 +495,6 @@ chunk_capture_callback(FpiUsbTransfer *transfer, FpDevice *device,
 static void
 capture_chunk_async(FpiSsm *ssm, FpDevice *_dev, guint timeout)
 {
-  fp_dbg("--> capture_chunk_async");
   FpDeviceVfs7552 *self;
 
   self = FPI_DEVICE_VFS7552(_dev);
@@ -509,7 +512,6 @@ capture_chunk_async(FpiSsm *ssm, FpDevice *_dev, guint timeout)
 static void
 capture_init(FpDeviceVfs7552 *self)
 {
-  fp_dbg("--> capture_init");
   self->image_index = 0;
   self->chunks_captured = 0;
 }
@@ -519,7 +521,6 @@ capture_init(FpDeviceVfs7552 *self)
 static void
 open_loop(FpiSsm *ssm, FpDevice *_dev)
 {
-  fp_dbg("--> open_loop");
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
 
@@ -543,16 +544,15 @@ open_loop(FpiSsm *ssm, FpDevice *_dev)
 static void
 await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
 {
-  fp_dbg("--> await_finger_on_loop");
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   unsigned char *receive_buf;
+  int variance;
 
   self = FPI_DEVICE_VFS7552(_dev);
   switch (fpi_ssm_get_cur_state(ssm))
   {
   case AWAIT_FINGER_ON_INIT:
-    fp_dbg("== AWAIT_FINGER_ON_INIT");
     // This sequence prepares the sensor for capturing the image.
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_initiate_capture);
@@ -564,7 +564,6 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     usb_exchange_async(ssm, &self->init_sequence, "INITIATE CAPTURE");
     break;
   case AWAIT_FINGER_ON_INTERRUPT_QUERY:
-    fp_dbg("== AWAIT_FINGER_ON_INTERRUPT_QUERY");
     // This sequence configures the sensor to listen to finger placement events.
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_wait_finger_init);
@@ -576,7 +575,6 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     usb_exchange_async(ssm, &self->init_sequence, "WAIT FOR FINGER");
     break;
   case AWAIT_FINGER_ON_INTERRUPT_CHECK:
-    fp_dbg("== AWAIT_FINGER_ON_INTERRUPT_CHECK");
     receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
     if (receive_buf[0] == interrupt_ok[0])
     {
@@ -601,7 +599,6 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     }
     break;
   case AWAIT_FINGER_ON_QUERY_DATA_READY:
-    fp_dbg("== AWAIT_FINGER_ON_QUERY_DATA_READY");
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_data_ready_query);
     self->init_sequence.actions = vfs7552_data_ready_query;
@@ -612,7 +609,6 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     usb_exchange_async(ssm, &self->init_sequence, "QUERY DATA READY");
     break;
   case AWAIT_FINGER_ON_CHECK_DATA_READY:
-    fp_dbg("== AWAIT_FINGER_ON_CHECK_DATA_READY");
     receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
     if (receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0])
     {
@@ -635,7 +631,6 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     }
     break;
   case AWAIT_FINGER_ON_REQUEST_CHUNK:
-    fp_dbg("== AWAIT_FINGER_ON_REQUEST_CHUNK");
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_request_chunk);
     self->init_sequence.actions = vfs7552_request_chunk;
@@ -646,12 +641,10 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     usb_exchange_async(ssm, &self->init_sequence, "REQUEST CHUNK");
     break;
   case AWAIT_FINGER_ON_READ_CHUNK:
-    fp_dbg("== AWAIT_FINGER_ON_READ_CHUNK");
     capture_chunk_async(ssm, _dev, 1000);
     break;
   case AWAIT_FINGER_ON_COMPLETE:
-    fp_dbg("== AWAIT_FINGER_ON_COMPLETE");
-    gint variance = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
+    variance = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
     fp_dbg("variance = %d\n", variance);
     // If the finger is placed on the sensor, the variance should ideally increase above a certain
     // threshold. Otherwise request a new image and test again.
@@ -661,7 +654,6 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
       fpi_ssm_jump_to_state(ssm, AWAIT_FINGER_ON_QUERY_DATA_READY);
     break;
   case AWAIT_FINGER_ON_FINALIZE:
-    fp_dbg("== AWAIT_FINGER_ON_FINALIZE");
     fpi_ssm_mark_completed(ssm);
     break;
   }
@@ -670,7 +662,6 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
 static void
 capture_loop(FpiSsm *ssm, FpDevice *_dev)
 {
-  fp_dbg("--> capture_loop");
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   unsigned char *receive_buf;
@@ -679,7 +670,6 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
   switch (fpi_ssm_get_cur_state(ssm))
   {
   case CAPTURE_QUERY_DATA_READY:
-    fp_dbg("== CAPTURE_QUERY_DATA_READY");
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_data_ready_query);
     self->init_sequence.actions = vfs7552_data_ready_query;
@@ -690,7 +680,6 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
     usb_exchange_async(ssm, &self->init_sequence, "QUERY DATA READY");
     break;
   case CAPTURE_CHECK_DATA_READY:
-    fp_dbg("== CAPTURE_CHECK_DATA_READY");
     receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
     if (receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0])
     {
@@ -713,7 +702,6 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
     }
     break;
   case CAPTURE_REQUEST_CHUNK:
-    fp_dbg("== CAPTURE_REQUEST_CHUNK");
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_request_chunk);
     self->init_sequence.actions = vfs7552_request_chunk;
@@ -724,11 +712,9 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
     usb_exchange_async(ssm, &self->init_sequence, "REQUEST CHUNK");
     break;
   case CAPTURE_READ_CHUNK:
-    fp_dbg("== CAPTURE_READ_CHUNK");
     capture_chunk_async(ssm, _dev, 1000);
     break;
   case CAPTURE_COMPLETE:
-    fp_dbg("== CAPTURE_COMPLETE");
     if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE)
     {
       fpi_ssm_mark_completed(ssm);
@@ -746,7 +732,6 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
     }
     break;
   case CAPTURE_DISABLE_SENSOR:
-    fp_dbg("== CAPTURE_DISABLE_SENSOR");
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_stop_capture);
     self->init_sequence.actions = vfs7552_stop_capture;
@@ -757,7 +742,6 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
     usb_exchange_async(ssm, &self->init_sequence, "STOP CAPTURE");
     break;
   case CAPTURE_DISABLE_COMPLETE:
-    fp_dbg("== CAPTURE_DISABLE_COMPLETE");
     fpi_ssm_mark_completed(ssm);
     break;
   }
@@ -768,7 +752,6 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
 static void
 dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
 {
-  fp_dbg("--> dev_change_state");
   FpiSsm *ssm;
   FpDeviceVfs7552 *self;
 
@@ -778,23 +761,19 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
   {
   case FPI_IMAGE_DEVICE_STATE_INACTIVE:
     // This state is never used...
-    fp_dbg("== FPI_IMAGE_DEVICE_STATE_INACTIVE");
     break;
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON:
-    fp_dbg("== FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON");
     // This state is called after activation completed or another enroll stage started
     self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
     ssm = fpi_ssm_new(FP_DEVICE(dev), await_finger_on_loop, AWAIT_FINGER_ON_NUM_STATES);
     fpi_ssm_start(ssm, report_finger_on);
     break;
   case FPI_IMAGE_DEVICE_STATE_CAPTURE:
-    fp_dbg("== FPI_IMAGE_DEVICE_STATE_CAPTURE");
     self->dev_state = FPI_IMAGE_DEVICE_STATE_CAPTURE;
     ssm = fpi_ssm_new(FP_DEVICE(dev), capture_loop, CAPTURE_NUM_STATES);
     fpi_ssm_start(ssm, submit_image);
     break;
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF:
-    fp_dbg("== FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF");
     self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
     ssm = fpi_ssm_new(FP_DEVICE(dev), capture_loop, CAPTURE_NUM_STATES);
     fpi_ssm_start(ssm, report_finger_off);
@@ -811,7 +790,6 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
 static void
 dev_open(FpImageDevice *dev)
 {
-  fp_dbg("--> dev_open");
   FpiSsm *ssm;
   GError *error = NULL;
   FpDeviceVfs7552 *self;
@@ -841,7 +819,6 @@ dev_open(FpImageDevice *dev)
 static void
 dev_close(FpImageDevice *dev)
 {
-  fp_dbg("--> dev_close");
   GError *error = NULL;
   FpDeviceVfs7552 *self = FPI_DEVICE_VFS7552(dev);
 
@@ -861,7 +838,6 @@ dev_close(FpImageDevice *dev)
 static void
 dev_activate(FpImageDevice *dev)
 {
-  fp_dbg("--> dev_activate");
   FpDeviceVfs7552 *self;
 
   self = FPI_DEVICE_VFS7552(dev);
@@ -873,7 +849,6 @@ dev_activate(FpImageDevice *dev)
 static void
 dev_deactivate(FpImageDevice *dev)
 {
-  fp_dbg("--> dev_deactivate");
   FpDeviceVfs7552 *self;
 
   self = FPI_DEVICE_VFS7552(dev);
