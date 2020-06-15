@@ -390,6 +390,8 @@ report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
   fpi_image_device_report_finger_status(dev, FALSE);
 }
 
+/* =========== Image Capturing and Processing ============ */
+
 enum
 {
   CHUNK_READ_FINISHED,
@@ -486,16 +488,6 @@ chunk_capture_callback(FpiUsbTransfer *transfer, FpDevice *device,
   self->flying_transfer = NULL;
 }
 
-/* ============= Helper functions ============== */
-
-static void
-capture_init(FpDeviceVfs7552 *self)
-{
-  fp_dbg("--> capture_init");
-  self->image_index = 0;
-  self->chunks_captured = 0;
-}
-
 static void
 capture_chunk_async(FpiSsm *ssm, FpDevice *_dev, guint timeout)
 {
@@ -513,6 +505,14 @@ capture_chunk_async(FpiSsm *ssm, FpDevice *_dev, guint timeout)
   self->flying_transfer->ssm = ssm;
   fpi_usb_transfer_submit(self->flying_transfer, timeout, NULL,
                           chunk_capture_callback, NULL);
+}
+
+static void
+capture_init(FpDeviceVfs7552 *self)
+{
+  fp_dbg("--> capture_init");
+  self->image_index = 0;
+  self->chunks_captured = 0;
 }
 
 /* ================ Delegation Functions ================= */
@@ -542,9 +542,9 @@ open_loop(FpiSsm *ssm, FpDevice *_dev)
 }
 
 static void
-await_finger_on_run_state(FpiSsm *ssm, FpDevice *_dev)
+await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
 {
-  fp_dbg("--> await_finger_on_run_state");
+  fp_dbg("--> await_finger_on_loop");
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   unsigned char *receive_buf;
@@ -669,9 +669,9 @@ await_finger_on_run_state(FpiSsm *ssm, FpDevice *_dev)
 }
 
 static void
-capture_run_state(FpiSsm *ssm, FpDevice *_dev)
+capture_loop(FpiSsm *ssm, FpDevice *_dev)
 {
-  fp_dbg("--> capture_run_state");
+  fp_dbg("--> capture_loop");
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   unsigned char *receive_buf;
@@ -785,19 +785,19 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
     fp_dbg("== FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON");
     // This state is called after activation completed or another enroll stage started
     self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
-    ssm = fpi_ssm_new(FP_DEVICE(dev), await_finger_on_run_state, AWAIT_FINGER_ON_NUM_STATES);
+    ssm = fpi_ssm_new(FP_DEVICE(dev), await_finger_on_loop, AWAIT_FINGER_ON_NUM_STATES);
     fpi_ssm_start(ssm, report_finger_on);
     break;
   case FPI_IMAGE_DEVICE_STATE_CAPTURE:
     fp_dbg("== FPI_IMAGE_DEVICE_STATE_CAPTURE");
     self->dev_state = FPI_IMAGE_DEVICE_STATE_CAPTURE;
-    ssm = fpi_ssm_new(FP_DEVICE(dev), capture_run_state, CAPTURE_NUM_STATES);
+    ssm = fpi_ssm_new(FP_DEVICE(dev), capture_loop, CAPTURE_NUM_STATES);
     fpi_ssm_start(ssm, submit_image);
     break;
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF:
     fp_dbg("== FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF");
     self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
-    ssm = fpi_ssm_new(FP_DEVICE(dev), capture_run_state, CAPTURE_NUM_STATES);
+    ssm = fpi_ssm_new(FP_DEVICE(dev), capture_loop, CAPTURE_NUM_STATES);
     fpi_ssm_start(ssm, report_finger_off);
     break;
   default:
@@ -857,6 +857,7 @@ dev_close(FpImageDevice *dev)
 
 /**
  * The second step after opening the connection to the device is the device activation.
+ * We don't actually do any communication with the device here.
  */
 static void
 dev_activate(FpImageDevice *dev)
