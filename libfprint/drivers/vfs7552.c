@@ -86,6 +86,114 @@ struct usbexchange_data
   int timeout;
 };
 
+/* ================== Class Definition =================== */
+
+struct _FpDeviceVfs7552
+{
+  FpImageDevice parent;
+
+  unsigned char *capture_buffer;
+  FpiImageDeviceState dev_state;
+  unsigned char *image;
+  gint image_index;
+  gint chunks_captured;
+
+  gboolean loop_running;
+  gboolean deactivating;
+  struct usbexchange_data init_sequence;
+  FpiUsbTransfer *flying_transfer;
+};
+
+G_DECLARE_FINAL_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FPI, DEVICE_VFS7552,
+                     FpImageDevice);
+G_DEFINE_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FP_TYPE_IMAGE_DEVICE);
+
+/* ======================= States ======================== */
+
+enum
+{
+  DEV_OPEN_START,
+  DEV_OPEN_NUM_STATES
+};
+
+enum
+{
+  AWAIT_FINGER_ON_INIT,
+  AWAIT_FINGER_ON_INTERRUPT_QUERY,
+  AWAIT_FINGER_ON_INTERRUPT_CHECK,
+  AWAIT_FINGER_ON_QUERY_DATA_READY,
+  AWAIT_FINGER_ON_CHECK_DATA_READY,
+  AWAIT_FINGER_ON_REQUEST_CHUNK,
+  AWAIT_FINGER_ON_READ_CHUNK,
+  AWAIT_FINGER_ON_COMPLETE,
+  AWAIT_FINGER_ON_FINALIZE,
+  AWAIT_FINGER_ON_NUM_STATES
+};
+
+enum
+{
+  CAPTURE_QUERY_DATA_READY,
+  CAPTURE_CHECK_DATA_READY,
+  CAPTURE_REQUEST_CHUNK,
+  CAPTURE_READ_CHUNK,
+  CAPTURE_COMPLETE,
+  CAPTURE_DISABLE_SENSOR,
+  CAPTURE_DISABLE_COMPLETE,
+  CAPTURE_NUM_STATES
+};
+
+/* ============== USB Sequence Definitions =============== */
+
+struct usb_action vfs7552_initialization[] = {
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_cmd_01)
+        RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 64, vfs7552_cmd_01_recv)
+
+            SEND(VFS7552_OUT_ENDPOINT, vfs7552_cmd_19)
+                RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 128, vfs7552_cmd_19_recv)
+
+                    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_00)
+                        RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
+
+                            SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_01)
+                                RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
+
+                                    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_02)
+                                        RECV_CHECK(VFS7552_IN_ENDPOINT, 64, vfs7552_init_02_recv)
+
+                                            SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_03)
+                                                RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 64, vfs7552_init_03_recv)
+
+                                                    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_04)
+                                                        RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
+    /*
+     * Windows driver does this and it works
+     * But in this driver this call never returns...
+     * RECV(VFS7552_IN_ENDPOINT_CTRL2, 8)
+     */
+};
+
+struct usb_action vfs7552_stop_capture[] = {
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_cmd_04)
+        RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
+
+            SEND(VFS7552_OUT_ENDPOINT, vfs7552_cmd_52)
+                RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)};
+
+struct usb_action vfs7552_initiate_capture[] = {
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_image_start)
+        RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 2048, vfs7552_image_start_resp)};
+
+struct usb_action vfs7552_wait_finger_init[] = {
+    RECV_CHECK_SIZE(VFS7552_INTERRUPT_ENDPOINT, 8, interrupt_ok)};
+
+struct usb_action vfs7552_data_ready_query[] = {
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_is_image_ready)
+        RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 64, vfs7552_is_image_ready_resp_ready)
+
+};
+struct usb_action vfs7552_request_chunk[] = {
+    SEND(VFS7552_OUT_ENDPOINT, vfs7552_read_image_chunk)};
+
 /* ================== USB Communication ================== */
 
 static void
@@ -216,114 +324,6 @@ usb_exchange_async(FpiSsm *ssm,
   fpi_ssm_set_data(subsm, data, NULL);
   fpi_ssm_start_subsm(ssm, subsm);
 }
-
-/* ================== Class Definition =================== */
-struct _FpDeviceVfs7552
-{
-  FpImageDevice parent;
-
-  unsigned char *capture_buffer;
-  FpiImageDeviceState dev_state;
-  GSList *rows;
-  unsigned char *image;
-  gint image_index;
-  gint chunks_captured;
-
-  gboolean loop_running;
-  gboolean deactivating;
-  struct usbexchange_data init_sequence;
-  FpiUsbTransfer *flying_transfer;
-};
-
-G_DECLARE_FINAL_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FPI, DEVICE_VFS7552,
-                     FpImageDevice);
-G_DEFINE_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FP_TYPE_IMAGE_DEVICE);
-
-/* ======================= States ======================== */
-
-enum
-{
-  DEV_OPEN_START,
-  DEV_OPEN_NUM_STATES
-};
-
-enum
-{
-  AWAIT_FINGER_ON_INIT,
-  AWAIT_FINGER_ON_INTERRUPT_QUERY,
-  AWAIT_FINGER_ON_INTERRUPT_CHECK,
-  AWAIT_FINGER_ON_QUERY_DATA_READY,
-  AWAIT_FINGER_ON_CHECK_DATA_READY,
-  AWAIT_FINGER_ON_REQUEST_CHUNK,
-  AWAIT_FINGER_ON_READ_CHUNK,
-  AWAIT_FINGER_ON_COMPLETE,
-  AWAIT_FINGER_ON_FINALIZE,
-  AWAIT_FINGER_ON_NUM_STATES
-};
-
-enum
-{
-  CAPTURE_QUERY_DATA_READY,
-  CAPTURE_CHECK_DATA_READY,
-  CAPTURE_REQUEST_CHUNK,
-  CAPTURE_READ_CHUNK,
-  CAPTURE_COMPLETE,
-  CAPTURE_DISABLE_SENSOR,
-  CAPTURE_DISABLE_COMPLETE,
-  CAPTURE_NUM_STATES
-};
-
-/* ============== USB Sequence Definitions =============== */
-
-struct usb_action vfs7552_initialization[] = {
-    SEND(VFS7552_OUT_ENDPOINT, vfs7552_cmd_01)
-        RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 64, vfs7552_cmd_01_recv)
-
-            SEND(VFS7552_OUT_ENDPOINT, vfs7552_cmd_19)
-                RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 128, vfs7552_cmd_19_recv)
-
-                    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_00)
-                        RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
-
-                            SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_01)
-                                RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
-
-                                    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_02)
-                                        RECV_CHECK(VFS7552_IN_ENDPOINT, 64, vfs7552_init_02_recv)
-
-                                            SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_03)
-                                                RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 64, vfs7552_init_03_recv)
-
-                                                    SEND(VFS7552_OUT_ENDPOINT, vfs7552_init_04)
-                                                        RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
-    /*
-     * Windows driver does this and it works
-     * But in this driver this call never returns...
-     * RECV(VFS7552_IN_ENDPOINT_CTRL2, 8)
-     */
-};
-
-struct usb_action vfs7552_stop_capture[] = {
-    SEND(VFS7552_OUT_ENDPOINT, vfs7552_cmd_04)
-        RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)
-
-            SEND(VFS7552_OUT_ENDPOINT, vfs7552_cmd_52)
-                RECV_CHECK(VFS7552_IN_ENDPOINT, 64, VFS7552_NORMAL_REPLY)};
-
-struct usb_action vfs7552_initiate_capture[] = {
-    SEND(VFS7552_OUT_ENDPOINT, vfs7552_image_start)
-        RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 2048, vfs7552_image_start_resp)};
-
-struct usb_action vfs7552_wait_finger_init[] = {
-    RECV_CHECK_SIZE(VFS7552_INTERRUPT_ENDPOINT, 8, interrupt_ok)};
-
-struct usb_action vfs7552_data_ready_query[] = {
-    SEND(VFS7552_OUT_ENDPOINT, vfs7552_is_image_ready)
-        RECV_CHECK_SIZE(VFS7552_IN_ENDPOINT, 64, vfs7552_is_image_ready_resp_ready)
-
-};
-struct usb_action vfs7552_request_chunk[] = {
-    SEND(VFS7552_OUT_ENDPOINT, vfs7552_read_image_chunk)};
 
 /* ============= SSM Finalization Functions ============== */
 
@@ -849,7 +849,6 @@ dev_close(FpImageDevice *dev)
                                  0, 0, &error);
 
   g_free(self->capture_buffer);
-  g_slist_free_full(self->rows, g_free);
 
   fpi_image_device_close_complete(dev, error);
 }
