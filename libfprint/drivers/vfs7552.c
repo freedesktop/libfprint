@@ -552,7 +552,6 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
   int variance;
 
   self = FPI_DEVICE_VFS7552(_dev);
-  fp_dbg ("main_loop: state %d", fpi_ssm_get_cur_state (ssm));
   if (self->deactivating)
   {
     fp_dbg("deactivating, marking completed");
@@ -567,8 +566,9 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
         G_N_ELEMENTS(vfs7552_initiate_capture);
     self->init_sequence.actions = vfs7552_initiate_capture;
     self->init_sequence.device = dev;
-    self->init_sequence.receive_buf =
-        g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    if (self->init_sequence.receive_buf == NULL)
+      self->init_sequence.receive_buf =
+          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = VFS7552_DEFAULT_WAIT_TIMEOUT;
     usb_exchange_async(ssm, &self->init_sequence, "AFON INITIATE CAPTURE");
     break;
@@ -578,8 +578,9 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
         G_N_ELEMENTS(vfs7552_wait_finger_init);
     self->init_sequence.actions = vfs7552_wait_finger_init;
     self->init_sequence.device = dev;
-    self->init_sequence.receive_buf =
-        g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    if (self->init_sequence.receive_buf == NULL)
+      self->init_sequence.receive_buf =
+          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = 0; // Do not time out
     usb_exchange_async(ssm, &self->init_sequence, "AFON WAIT FOR FINGER");
     break;
@@ -612,8 +613,9 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
         G_N_ELEMENTS(vfs7552_data_ready_query);
     self->init_sequence.actions = vfs7552_data_ready_query;
     self->init_sequence.device = dev;
-    self->init_sequence.receive_buf =
-        g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    if (self->init_sequence.receive_buf == NULL)
+      self->init_sequence.receive_buf =
+          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = 0; // Do not time out
     usb_exchange_async(ssm, &self->init_sequence, "AFON QUERY DATA READY");
     break;
@@ -644,8 +646,9 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
         G_N_ELEMENTS(vfs7552_request_chunk);
     self->init_sequence.actions = vfs7552_request_chunk;
     self->init_sequence.device = dev;
-    self->init_sequence.receive_buf =
-        g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    if (self->init_sequence.receive_buf == NULL)
+      self->init_sequence.receive_buf =
+          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = 1000;
     usb_exchange_async(ssm, &self->init_sequence, "AFON REQUEST CHUNK");
     break;
@@ -676,7 +679,6 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
   unsigned char *receive_buf;
 
   self = FPI_DEVICE_VFS7552(_dev);
-  fp_dbg ("main_loop: state %d", fpi_ssm_get_cur_state (ssm));
   if (self->deactivating)
   {
     fp_dbg("deactivating, marking completed");
@@ -690,8 +692,9 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
         G_N_ELEMENTS(vfs7552_data_ready_query);
     self->init_sequence.actions = vfs7552_data_ready_query;
     self->init_sequence.device = dev;
-    self->init_sequence.receive_buf =
-        g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    if (self->init_sequence.receive_buf == NULL)
+      self->init_sequence.receive_buf =
+          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = 0; // Do not time out
     usb_exchange_async(ssm, &self->init_sequence, "QUERY DATA READY");
     break;
@@ -722,8 +725,9 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
         G_N_ELEMENTS(vfs7552_request_chunk);
     self->init_sequence.actions = vfs7552_request_chunk;
     self->init_sequence.device = dev;
-    self->init_sequence.receive_buf =
-        g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    if (self->init_sequence.receive_buf == NULL)
+      self->init_sequence.receive_buf =
+          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = 1000;
     usb_exchange_async(ssm, &self->init_sequence, "REQUEST CHUNK");
     break;
@@ -752,8 +756,9 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
         G_N_ELEMENTS(vfs7552_stop_capture);
     self->init_sequence.actions = vfs7552_stop_capture;
     self->init_sequence.device = dev;
-    self->init_sequence.receive_buf =
-        g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    if (self->init_sequence.receive_buf == NULL)
+      self->init_sequence.receive_buf =
+          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = 1000;
     usb_exchange_async(ssm, &self->init_sequence, "STOP CAPTURE");
     break;
@@ -772,6 +777,16 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
   FpDeviceVfs7552 *self;
 
   self = FPI_DEVICE_VFS7552(dev);
+
+  if (self->dev_state == state)
+  {
+    fp_dbg("already in %d", state);
+    return;
+  }
+  else
+  {
+    fp_dbg("changing to %d", state);
+  }
 
   switch (state)
   {
@@ -869,7 +884,10 @@ dev_deactivate(FpImageDevice *dev)
   self = FPI_DEVICE_VFS7552(dev);
 
   if (self->loop_running)
+  {
+    self->dev_state = FPI_IMAGE_DEVICE_STATE_INACTIVE;
     self->deactivating = TRUE;
+  }
   else
     fpi_image_device_deactivate_complete(dev, NULL);
 }
