@@ -570,7 +570,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.receive_buf =
         g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = VFS7552_DEFAULT_WAIT_TIMEOUT;
-    usb_exchange_async(ssm, &self->init_sequence, "INITIATE CAPTURE");
+    usb_exchange_async(ssm, &self->init_sequence, "AFON INITIATE CAPTURE");
     break;
   case AWAIT_FINGER_ON_INTERRUPT_QUERY:
     // This sequence configures the sensor to listen to finger placement events.
@@ -581,7 +581,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.receive_buf =
         g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = 0; // Do not time out
-    usb_exchange_async(ssm, &self->init_sequence, "WAIT FOR FINGER");
+    usb_exchange_async(ssm, &self->init_sequence, "AFON WAIT FOR FINGER");
     break;
   case AWAIT_FINGER_ON_INTERRUPT_CHECK:
     receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
@@ -615,7 +615,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.receive_buf =
         g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = 0; // Do not time out
-    usb_exchange_async(ssm, &self->init_sequence, "QUERY DATA READY");
+    usb_exchange_async(ssm, &self->init_sequence, "AFON QUERY DATA READY");
     break;
   case AWAIT_FINGER_ON_CHECK_DATA_READY:
     receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
@@ -647,7 +647,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.receive_buf =
         g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = 1000;
-    usb_exchange_async(ssm, &self->init_sequence, "REQUEST CHUNK");
+    usb_exchange_async(ssm, &self->init_sequence, "AFON REQUEST CHUNK");
     break;
   case AWAIT_FINGER_ON_READ_CHUNK:
     capture_chunk_async(ssm, _dev, 1000);
