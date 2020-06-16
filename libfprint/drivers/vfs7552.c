@@ -346,6 +346,7 @@ report_finger_on(FpiSsm *ssm, FpDevice *_dev, GError *error)
   if (self->init_sequence.receive_buf != NULL)
     g_free(self->init_sequence.receive_buf);
   self->init_sequence.receive_buf = NULL;
+  
   if (!self->deactivating && !error)
   {
     fpi_image_device_report_finger_status(dev, TRUE);
@@ -440,6 +441,7 @@ process_chunk(FpDeviceVfs7552 *self, int transferred)
     ptr = ptr + VFS7552_IMAGE_WIDTH;
     self->image_index = self->image_index + VFS7552_IMAGE_WIDTH;
   }
+
   self->chunks_captured = self->chunks_captured + 1;
   if (self->chunks_captured == VFS7552_IMAGE_CHUNKS)
   {
@@ -480,6 +482,10 @@ chunk_capture_callback(FpiUsbTransfer *transfer, FpDevice *device,
     }
     else
     {
+      // The bug observed by fprintd is caused by the dev_state being changed to STATE_CAPTURE while the AWAIT_FINGER_ON_CHECK_DATA_READY
+      // loop hasn't finished. Therefore the first if condition is met, and not the second, which sends the ssm into the wrong state 
+      // (it gets sent to AWAIT_FINGER_ON_INTERRUPT_CHECK instead of AWAIT_FINGER_ON_REQUEST_CHUNK because CAPTURE_REQUEST_CHUNK
+      // represents the same number 1 as AWAIT_FINGER_ON_INTERRUPT_CHECK) 
       if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE || self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
       {
         fpi_ssm_jump_to_state(transfer->ssm, CAPTURE_REQUEST_CHUNK);
@@ -558,6 +564,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     fpi_ssm_mark_completed(ssm);
     return;
   }
+
   switch (fpi_ssm_get_cur_state(ssm))
   {
   case AWAIT_FINGER_ON_INIT:
@@ -572,6 +579,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.timeout = VFS7552_DEFAULT_WAIT_TIMEOUT;
     usb_exchange_async(ssm, &self->init_sequence, "AFON INITIATE CAPTURE");
     break;
+
   case AWAIT_FINGER_ON_INTERRUPT_QUERY:
     // This sequence configures the sensor to listen to finger placement events.
     self->init_sequence.stepcount =
@@ -584,6 +592,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.timeout = 0; // Do not time out
     usb_exchange_async(ssm, &self->init_sequence, "AFON WAIT FOR FINGER");
     break;
+
   case AWAIT_FINGER_ON_INTERRUPT_CHECK:
     receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
     if (receive_buf[0] == interrupt_ok[0])
@@ -608,6 +617,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
       fpi_ssm_next_state(ssm);
     }
     break;
+
   case AWAIT_FINGER_ON_QUERY_DATA_READY:
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_data_ready_query);
@@ -619,6 +629,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.timeout = 0; // Do not time out
     usb_exchange_async(ssm, &self->init_sequence, "AFON QUERY DATA READY");
     break;
+
   case AWAIT_FINGER_ON_CHECK_DATA_READY:
     receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
     if (receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0])
@@ -641,6 +652,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
       fpi_ssm_mark_failed(ssm, NULL);
     }
     break;
+
   case AWAIT_FINGER_ON_REQUEST_CHUNK:
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_request_chunk);
@@ -652,9 +664,11 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.timeout = 1000;
     usb_exchange_async(ssm, &self->init_sequence, "AFON REQUEST CHUNK");
     break;
+
   case AWAIT_FINGER_ON_READ_CHUNK:
     capture_chunk_async(ssm, _dev, 1000);
     break;
+
   case AWAIT_FINGER_ON_COMPLETE:
     variance = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
     fp_dbg("variance = %d\n", variance);
@@ -665,6 +679,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     else
       fpi_ssm_jump_to_state(ssm, AWAIT_FINGER_ON_QUERY_DATA_READY);
     break;
+
   case AWAIT_FINGER_ON_FINALIZE:
     fpi_ssm_mark_completed(ssm);
     break;
@@ -698,6 +713,7 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.timeout = 0; // Do not time out
     usb_exchange_async(ssm, &self->init_sequence, "QUERY DATA READY");
     break;
+
   case CAPTURE_CHECK_DATA_READY:
     receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
     if (receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0])
@@ -720,6 +736,7 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
       fpi_ssm_mark_failed(ssm, NULL);
     }
     break;
+
   case CAPTURE_REQUEST_CHUNK:
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_request_chunk);
@@ -731,9 +748,11 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.timeout = 1000;
     usb_exchange_async(ssm, &self->init_sequence, "REQUEST CHUNK");
     break;
+
   case CAPTURE_READ_CHUNK:
     capture_chunk_async(ssm, _dev, 1000);
     break;
+
   case CAPTURE_COMPLETE:
     if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE)
     {
@@ -751,6 +770,7 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
         fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
     }
     break;
+
   case CAPTURE_DISABLE_SENSOR:
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_stop_capture);
@@ -762,6 +782,7 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
     self->init_sequence.timeout = 1000;
     usb_exchange_async(ssm, &self->init_sequence, "STOP CAPTURE");
     break;
+
   case CAPTURE_DISABLE_COMPLETE:
     fpi_ssm_mark_completed(ssm);
     break;
