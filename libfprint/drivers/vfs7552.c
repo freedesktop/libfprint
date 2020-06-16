@@ -95,6 +95,7 @@ struct _FpDeviceVfs7552
   unsigned char *capture_buffer;
   FpiImageDeviceState dev_state;
   unsigned char *image;
+  unsigned char *scaled_image;
   gint image_index;
   gint chunks_captured;
 
@@ -373,11 +374,11 @@ submit_image(FpiSsm *ssm, FpDevice *_dev, GError *error)
 
   if (!self->deactivating && !error)
   {
-    img = fp_image_new(VFS7552_IMAGE_WIDTH,
-                       VFS7552_IMAGE_HEIGHT);
+    img = fp_image_new(2*VFS7552_IMAGE_WIDTH,
+                       2*VFS7552_IMAGE_HEIGHT);
     fp_dbg("Image captured");
 
-    memcpy(img->data, self->image, VFS7552_IMAGE_SIZE);
+    memcpy(img->data, self->scaled_image, 4*VFS7552_IMAGE_SIZE);
     fpi_image_device_image_captured(dev, img);
   }
   self->loop_running = FALSE;
@@ -426,7 +427,7 @@ process_chunk(FpDeviceVfs7552 *self, int transferred)
   unsigned char *ptr;
   int n_bytes_in_chunk;
   int n_lines;
-  int i;
+  int i, j;
 
   ptr = self->capture_buffer;
   n_bytes_in_chunk = ptr[2] + ptr[3] * 256;
@@ -447,6 +448,19 @@ process_chunk(FpDeviceVfs7552 *self, int transferred)
   {
     self->image_index = 0;
     self->chunks_captured = 0;
+    // Scale the image
+    for(j = 0; j < VFS7552_IMAGE_HEIGHT; j++)
+    {
+      for(i = 0; i < VFS7552_IMAGE_WIDTH; i++)
+      {
+        int ref = j*VFS7552_IMAGE_WIDTH + i;
+        int ref_new = 4*j*VFS7552_IMAGE_WIDTH + 2*i;
+        self->scaled_image[ref_new] = self->image[ref];
+        self->scaled_image[ref_new + 1] = self->image[ref];
+        self->scaled_image[ref_new + 2 * VFS7552_IMAGE_WIDTH] = self->image[ref];
+        self->scaled_image[ref_new + 2 * VFS7552_IMAGE_WIDTH + 1] = self->image[ref];
+      }
+    }
     return CHUNK_READ_FINISHED;
   }
   return CHUNK_READ_NEED_MORE;
@@ -874,8 +888,8 @@ dev_open(FpImageDevice *dev)
 
   self = FPI_DEVICE_VFS7552(dev);
   self->capture_buffer = g_new0(unsigned char, VFS7552_RECEIVE_BUF_SIZE);
-  self->image =
-      (unsigned char *)g_malloc0(VFS7552_IMAGE_HEIGHT * VFS7552_IMAGE_WIDTH);
+  self->image = g_new0(unsigned char, VFS7552_IMAGE_SIZE);
+  self->scaled_image = g_new0(unsigned char, 4*VFS7552_IMAGE_SIZE);
 
   // First we need to reset the device, otherwise opening will fail at state 13
   if (!g_usb_device_reset(fpi_device_get_usb_device(FP_DEVICE(dev)), &error))
