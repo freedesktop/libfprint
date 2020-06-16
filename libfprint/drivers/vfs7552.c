@@ -203,17 +203,17 @@ async_send_cb(FpiUsbTransfer *transfer, FpDevice *device,
   struct usbexchange_data *data = fpi_ssm_get_data(transfer->ssm);
   struct usb_action *action;
 
+  g_assert(!(fpi_ssm_get_cur_state(transfer->ssm) >= data->stepcount));
+
+  action = &data->actions[fpi_ssm_get_cur_state(transfer->ssm)];
+  g_assert(!(action->type != ACTION_SEND));
+
   if (error)
   {
     /* Transfer not completed, return IO error */
     fpi_ssm_mark_failed(transfer->ssm, error);
     return;
   }
-  
-  g_assert(!(fpi_ssm_get_cur_state(transfer->ssm) >= data->stepcount));
-
-  action = &data->actions[fpi_ssm_get_cur_state(transfer->ssm)];
-  g_assert(!(action->type != ACTION_SEND));
 
   /* success */
   fpi_ssm_next_state(transfer->ssm);
@@ -778,23 +778,13 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
 
   self = FPI_DEVICE_VFS7552(dev);
 
-  if (self->dev_state == state)
-  {
-    fp_dbg("already in %d", state);
-    return;
-  }
-  else
-  {
-    fp_dbg("changing to %d", state);
-  }
-
   switch (state)
   {
   case FPI_IMAGE_DEVICE_STATE_INACTIVE:
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON:
     // This state is called after activation completed or another enroll stage started
-    self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
     self->loop_running = TRUE;
+    self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
     ssm = fpi_ssm_new(FP_DEVICE(dev), await_finger_on_loop, AWAIT_FINGER_ON_NUM_STATES);
     fpi_ssm_start(ssm, report_finger_on);
     break;
@@ -885,7 +875,6 @@ dev_deactivate(FpImageDevice *dev)
 
   if (self->loop_running)
   {
-    self->dev_state = FPI_IMAGE_DEVICE_STATE_INACTIVE;
     self->deactivating = TRUE;
   }
   else
