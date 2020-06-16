@@ -346,7 +346,7 @@ report_finger_on(FpiSsm *ssm, FpDevice *_dev, GError *error)
   if (self->init_sequence.receive_buf != NULL)
     g_free(self->init_sequence.receive_buf);
   self->init_sequence.receive_buf = NULL;
-  
+
   if (!self->deactivating && !error)
   {
     fpi_image_device_report_finger_status(dev, TRUE);
@@ -478,14 +478,17 @@ chunk_capture_callback(FpiUsbTransfer *transfer, FpDevice *device,
   {
     if (process_chunk(self, transfer->actual_length) == CHUNK_READ_FINISHED)
     {
+      // We have collected all chunks
       fpi_ssm_next_state(transfer->ssm);
     }
     else
     {
-      // The bug observed by fprintd is caused by the dev_state being changed to STATE_CAPTURE while the AWAIT_FINGER_ON_CHECK_DATA_READY
-      // loop hasn't finished. Therefore the first if condition is met, and not the second, which sends the ssm into the wrong state 
-      // (it gets sent to AWAIT_FINGER_ON_INTERRUPT_CHECK instead of AWAIT_FINGER_ON_REQUEST_CHUNK because CAPTURE_REQUEST_CHUNK
-      // represents the same number 1 as AWAIT_FINGER_ON_INTERRUPT_CHECK) 
+      /* The bug observed by fprintd is caused by the dev_state being changed to STATE_CAPTURE while
+      the AWAIT_FINGER_ON_CHECK_DATA_READY loop hasn't finished. Therefore the first if condition is
+      met, and not the second, which sends the ssm into the wrong state (it gets sent to 
+      AWAIT_FINGER_ON_INTERRUPT_QUERY instead of AWAIT_FINGER_ON_REQUEST_CHUNK because 
+      CAPTURE_REQUEST_CHUNK represents the same number 1 as AWAIT_FINGER_ON_INTERRUPT_QUERY)  */
+      // Collect more chunks
       if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE || self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
       {
         fpi_ssm_jump_to_state(transfer->ssm, CAPTURE_REQUEST_CHUNK);
@@ -790,12 +793,34 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
 }
 
 /* ================== Driver Entrypoints =================== */
+static void
+validity_change_state(FpImageDevice *dev)
+{
+  FpiSsm *ssm;
+  FpDeviceVfs7552 *self;
+
+  self = FPI_DEVICE_VFS7552(dev);
+  self->loop_running = TRUE;
+  self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
+  ssm = fpi_ssm_new(FP_DEVICE(dev), capture_loop, CAPTURE_NUM_STATES);
+  fpi_ssm_start(ssm, report_finger_off);
+}
+
+static void
+validity_change_state_async(FpDevice *dev,
+                            void *data)
+{
+  fp_dbg("state change dev: %p", dev);
+  validity_change_state(FP_IMAGE_DEVICE(dev));
+}
 
 static void
 dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
 {
   FpiSsm *ssm;
   FpDeviceVfs7552 *self;
+
+  GSource *timeout;
 
   self = FPI_DEVICE_VFS7552(dev);
 
@@ -816,11 +841,21 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
     fpi_ssm_start(ssm, submit_image);
     break;
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF:
-    self->loop_running = TRUE;
-    self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
-    ssm = fpi_ssm_new(FP_DEVICE(dev), capture_loop, CAPTURE_NUM_STATES);
-    fpi_ssm_start(ssm, report_finger_off);
+  {
+    char *name;
+
+    /* schedule state change instead of calling it directly to allow all actions
+         * related to the previous state to complete */
+    timeout = fpi_device_add_timeout(FP_DEVICE(dev), 10,
+                                     validity_change_state_async,
+                                     NULL, NULL);
+
+    name = g_strdup_printf("dev_change_state to %d", state);
+    g_source_set_name(timeout, name);
+    g_free(name);
+
     break;
+  }
   default:
     fp_err("unrecognised state %d", state);
   }
