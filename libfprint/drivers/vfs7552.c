@@ -99,6 +99,7 @@ struct _FpDeviceVfs7552
   gint chunks_captured;
 
   gboolean deactivating;
+  gboolean loop_running;
   struct usbexchange_data init_sequence;
   FpiUsbTransfer *flying_transfer;
 };
@@ -272,17 +273,6 @@ usbexchange_loop(FpiSsm *ssm, FpDevice *_dev)
   struct usb_action *action = &data->actions[fpi_ssm_get_cur_state(ssm)];
   FpiUsbTransfer *transfer;
 
-  FpDeviceVfs7552 *self;
-
-  self = FPI_DEVICE_VFS7552(_dev);
-  if (self->deactivating)
-  {
-    self->deactivating = FALSE;
-    fpi_image_device_deactivate_complete(FP_IMAGE_DEVICE(_dev),
-                                         fpi_device_error_new(FP_DEVICE_ERROR_GENERAL));
-    return;
-  }
-
   g_assert(fpi_ssm_get_cur_state(ssm) < data->stepcount);
 
   switch (action->type)
@@ -353,10 +343,19 @@ report_finger_on(FpiSsm *ssm, FpDevice *_dev, GError *error)
   FpDeviceVfs7552 *self;
 
   self = FPI_DEVICE_VFS7552(_dev);
-  g_free(self->init_sequence.receive_buf);
+  if (self->init_sequence.receive_buf != NULL)
+    g_free(self->init_sequence.receive_buf);
   self->init_sequence.receive_buf = NULL;
+  if (!self->deactivating && !error)
+  {
+    fpi_image_device_report_finger_status(dev, TRUE);
+  }
+  self->loop_running = FALSE;
 
-  fpi_image_device_report_finger_status(dev, TRUE);
+  if (self->deactivating)
+    fpi_image_device_deactivate_complete(dev, error);
+  else if (error)
+    fpi_image_device_session_error(dev, error);
 }
 
 static void
@@ -365,17 +364,27 @@ submit_image(FpiSsm *ssm, FpDevice *_dev, GError *error)
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   FpImage *img;
-  img = fp_image_new(VFS7552_IMAGE_WIDTH,
-                     VFS7552_IMAGE_HEIGHT);
 
   self = FPI_DEVICE_VFS7552(_dev);
-  g_free(self->init_sequence.receive_buf);
+  if (self->init_sequence.receive_buf != NULL)
+    g_free(self->init_sequence.receive_buf);
   self->init_sequence.receive_buf = NULL;
 
-  fp_dbg("Image captured");
+  if (!self->deactivating && !error)
+  {
+    img = fp_image_new(VFS7552_IMAGE_WIDTH,
+                       VFS7552_IMAGE_HEIGHT);
+    fp_dbg("Image captured");
 
-  memcpy(img->data, self->image, VFS7552_IMAGE_SIZE);
-  fpi_image_device_image_captured(dev, img);
+    memcpy(img->data, self->image, VFS7552_IMAGE_SIZE);
+    fpi_image_device_image_captured(dev, img);
+  }
+  self->loop_running = FALSE;
+
+  if (self->deactivating)
+    fpi_image_device_deactivate_complete(dev, error);
+  else if (error)
+    fpi_image_device_session_error(dev, error);
 }
 
 static void
@@ -386,10 +395,20 @@ report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
 
   self = FPI_DEVICE_VFS7552(_dev);
   self->dev_state = FPI_IMAGE_DEVICE_STATE_INACTIVE;
-  g_free(self->init_sequence.receive_buf);
-  self->init_sequence.receive_buf = NULL;
+  if (self->init_sequence.receive_buf != NULL)
+    g_free(self->init_sequence.receive_buf);
 
-  fpi_image_device_report_finger_status(dev, FALSE);
+  self->init_sequence.receive_buf = NULL;
+  if (!self->deactivating && !error)
+  {
+    fpi_image_device_report_finger_status(dev, FALSE);
+  }
+  self->loop_running = FALSE;
+
+  if (self->deactivating)
+    fpi_image_device_deactivate_complete(dev, error);
+  else if (error)
+    fpi_image_device_session_error(dev, error);
 }
 
 /* =========== Image Capturing and Processing ============ */
@@ -448,6 +467,8 @@ chunk_capture_callback(FpiUsbTransfer *transfer, FpDevice *device,
     }
     else
     {
+      // Clear the cancel error, because we are handling deactivation separately
+      g_error_free(error);
       fpi_ssm_mark_completed(transfer->ssm);
     }
   }
@@ -531,6 +552,13 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
   int variance;
 
   self = FPI_DEVICE_VFS7552(_dev);
+  fp_dbg ("main_loop: state %d", fpi_ssm_get_cur_state (ssm));
+  if (self->deactivating)
+  {
+    fp_dbg("deactivating, marking completed");
+    fpi_ssm_mark_completed(ssm);
+    return;
+  }
   switch (fpi_ssm_get_cur_state(ssm))
   {
   case AWAIT_FINGER_ON_INIT:
@@ -648,6 +676,13 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
   unsigned char *receive_buf;
 
   self = FPI_DEVICE_VFS7552(_dev);
+  fp_dbg ("main_loop: state %d", fpi_ssm_get_cur_state (ssm));
+  if (self->deactivating)
+  {
+    fp_dbg("deactivating, marking completed");
+    fpi_ssm_mark_completed(ssm);
+    return;
+  }
   switch (fpi_ssm_get_cur_state(ssm))
   {
   case CAPTURE_QUERY_DATA_READY:
@@ -744,15 +779,18 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON:
     // This state is called after activation completed or another enroll stage started
     self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
+    self->loop_running = TRUE;
     ssm = fpi_ssm_new(FP_DEVICE(dev), await_finger_on_loop, AWAIT_FINGER_ON_NUM_STATES);
     fpi_ssm_start(ssm, report_finger_on);
     break;
   case FPI_IMAGE_DEVICE_STATE_CAPTURE:
+    self->loop_running = TRUE;
     self->dev_state = FPI_IMAGE_DEVICE_STATE_CAPTURE;
     ssm = fpi_ssm_new(FP_DEVICE(dev), capture_loop, CAPTURE_NUM_STATES);
     fpi_ssm_start(ssm, submit_image);
     break;
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF:
+    self->loop_running = TRUE;
     self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
     ssm = fpi_ssm_new(FP_DEVICE(dev), capture_loop, CAPTURE_NUM_STATES);
     fpi_ssm_start(ssm, report_finger_off);
@@ -830,19 +868,10 @@ dev_deactivate(FpImageDevice *dev)
   FpDeviceVfs7552 *self;
   self = FPI_DEVICE_VFS7552(dev);
 
-  if (self->dev_state == FPI_IMAGE_DEVICE_STATE_INACTIVE)
-  {
-    /* The device is inactive already, complete the operation immediately. */
-    fpi_image_device_deactivate_complete(dev, NULL);
-  }
-  else
-  {
-    /* The device is not yet inactive, flag that we are deactivating (and
-       * need to signal back deactivation) and then ensure we will change
-       * to the inactive state eventually. */
+  if (self->loop_running)
     self->deactivating = TRUE;
-    dev_change_state(dev, FPI_IMAGE_DEVICE_STATE_INACTIVE);
-  }
+  else
+    fpi_image_device_deactivate_complete(dev, NULL);
 }
 
 static const FpIdEntry id_table[] = {
