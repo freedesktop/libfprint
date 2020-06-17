@@ -571,7 +571,7 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
     {
       // Calculate the variance of the captured image
       variance_before = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
-      fp_err("variance_before = %d\n", variance_before);
+      fp_dbg("variance_before = %d\n", variance_before);
       if (variance_before < RAW_VARIANCE_THRESHOLD)
       {
         fp_dbg("Storing background");
@@ -586,7 +586,7 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
     {
       clean_image(self);
       variance_after = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
-      fp_err("variance_after = %d\n", variance_after);
+      fp_dbg("variance_after = %d\n", variance_after);
       // If the finger is placed on the sensor, the variance should ideally increase above a certain
       // threshold. Otherwise request a new image and test again. Additionally we want to ensure
       // that we don't capture prints with a way too high noise level (this sometimes happens).
@@ -601,7 +601,7 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
     {
       clean_image(self);
       variance_after = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
-      fp_err("variance_after = %d\n", variance_after);
+      fp_dbg("variance_after = %d\n", variance_after);
       // If the finger is removed from the sensor, the variance should ideally drop below a certain
       // threshold.
       if (variance_after < FINGER_OFF_VARIANCE_THRESHOLD)
@@ -733,7 +733,6 @@ report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
   if (!self->deactivating && !error)
   {
     fpi_image_device_report_finger_status(dev, FALSE);
-    fp_err("Finger off");
   }
   self->loop_running = FALSE;
 
