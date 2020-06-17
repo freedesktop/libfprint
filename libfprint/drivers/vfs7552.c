@@ -1,7 +1,7 @@
 /*
- * Validity Sensors, Inc. VFS5011 Fingerprint Reader driver for libfprint
- * Copyright (C) 2013 Arseniy Lartsev <arseniy@chalmers.se>
- *                    AceLan Kao <acelan.kao@canonical.com>
+ * Validity Sensors, Inc. VFS7552 Fingerprint Reader driver for libfprint
+ * Copyright (C) 2018 Mark Harfouche <mark.harfouche@gmail.com>
+ *               2020 Julius Piso <julius@piso.at>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,8 +26,11 @@
 #define VFS7552_CONTROL_PIXELS (8)
 #define VFS7552_LINE_SIZE (VFS7552_IMAGE_WIDTH + VFS7552_CONTROL_PIXELS)
 #define VFS7552_IMAGE_CHUNKS (3)
-#define CAPTURE_VARIANCE_THRESHOLD 700
-#define FINGER_OFF_VARIANCE_THRESHOLD 450
+
+#define RAW_VARIANCE_THRESHOLD 450
+#define CAPTURE_VARIANCE_THRESHOLD 1500
+#define FINGER_OFF_VARIANCE_THRESHOLD 100
+#define NOISE_VARIANCE_THRESHOLD 4000
 
 /* =================== sync/async USB transfer sequence ==================== */
 
@@ -356,6 +359,8 @@ clean_image(FpDeviceVfs7552 *self)
   if (sum == 0)
   {
     fp_dbg("frame darker than background; finger present during calibration?");
+    // Retake an image of the background at the next opportunity.
+    self->background_captured = FALSE;
     return -1;
   }
   return 0;
@@ -466,29 +471,30 @@ reset_state(FpDeviceVfs7552 *self)
 
 /* ================ Run States ================= */
 
-static void
-deactivate_run_state(FpiSsm *ssm, FpDevice *_dev)
-{
-  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
-  FpDeviceVfs7552 *self;
+// static void
+// deactivate_run_state(FpiSsm *ssm, FpDevice *_dev)
+// {
+//   // TODO: Properly implement this deactivation step (even though it is not crucial for the operation)
+//   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
+//   FpDeviceVfs7552 *self;
 
-  self = FPI_DEVICE_VFS7552(_dev);
+//   self = FPI_DEVICE_VFS7552(_dev);
 
-  switch (fpi_ssm_get_cur_state(ssm))
-  {
-  case DEACTIVATE_DISABLE_SENSOR:
-    self->init_sequence.stepcount =
-        G_N_ELEMENTS(vfs7552_stop_capture);
-    self->init_sequence.actions = vfs7552_stop_capture;
-    self->init_sequence.device = dev;
-    if (self->init_sequence.receive_buf == NULL)
-      self->init_sequence.receive_buf =
-          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
-    self->init_sequence.timeout = 1000;
-    usb_exchange_async(ssm, &self->init_sequence, "STOP CAPTURE");
-    break;
-  }
-}
+//   switch (fpi_ssm_get_cur_state(ssm))
+//   {
+//   case DEACTIVATE_DISABLE_SENSOR:
+//     self->init_sequence.stepcount =
+//         G_N_ELEMENTS(vfs7552_stop_capture);
+//     self->init_sequence.actions = vfs7552_stop_capture;
+//     self->init_sequence.device = dev;
+//     if (self->init_sequence.receive_buf == NULL)
+//       self->init_sequence.receive_buf =
+//           g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+//     self->init_sequence.timeout = 1000;
+//     usb_exchange_async(ssm, &self->init_sequence, "STOP CAPTURE");
+//     break;
+//   }
+// }
 
 static void
 capture_run_state(FpiSsm *ssm, FpDevice *_dev)
@@ -496,7 +502,8 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   unsigned char *receive_buf;
-  int variance;
+  int variance_before;
+  int variance_after;
 
   self = FPI_DEVICE_VFS7552(_dev);
   if (self->deactivating)
@@ -559,25 +566,32 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
     break;
 
   case CAPTURE_COMPLETE:
-    // Calculate the variance of the captured image
-    variance = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
-    fp_dbg("variance = %d\n", variance);
-
-    if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE ||
-        self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON)
+    // Store the image as a background reference, if the variance is below the finger off threshold.
+    if (!self->background_captured)
     {
-      // Store the image as a background reference, if the variance is below the finger off threshold.
-      if (variance < FINGER_OFF_VARIANCE_THRESHOLD && !self->background_captured)
+      // Calculate the variance of the captured image
+      variance_before = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
+      fp_err("variance_before = %d\n", variance_before);
+      if (variance_before < RAW_VARIANCE_THRESHOLD)
       {
         fp_dbg("Storing background");
         self->background_captured = TRUE;
         memcpy(self->background, self->image, VFS7552_IMAGE_SIZE);
+        fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
+        break;
       }
+    }
+    if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE ||
+        self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON)
+    {
+      clean_image(self);
+      variance_after = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
+      fp_err("variance_after = %d\n", variance_after);
       // If the finger is placed on the sensor, the variance should ideally increase above a certain
-      // threshold. Otherwise request a new image and test again.
-      if (variance > CAPTURE_VARIANCE_THRESHOLD)
+      // threshold. Otherwise request a new image and test again. Additionally we want to ensure
+      // that we don't capture prints with a way too high noise level (this sometimes happens).
+      if (variance_after > CAPTURE_VARIANCE_THRESHOLD && variance_after < NOISE_VARIANCE_THRESHOLD)
       {
-        clean_image(self);
         fpi_ssm_mark_completed(ssm);
       }
       else
@@ -585,9 +599,12 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
     }
     else if (self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
     {
+      clean_image(self);
+      variance_after = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
+      fp_err("variance_after = %d\n", variance_after);
       // If the finger is removed from the sensor, the variance should ideally drop below a certain
       // threshold.
-      if (variance < FINGER_OFF_VARIANCE_THRESHOLD)
+      if (variance_after < FINGER_OFF_VARIANCE_THRESHOLD)
         fpi_ssm_mark_completed(ssm); //fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
       else
         fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
@@ -700,7 +717,7 @@ open_run_state(FpiSsm *ssm, FpDevice *_dev)
 
 /* ============= SSM Finalization Functions ============== */
 
-static void start_report_finger_on(FpImageDevice *dev);
+static void start_report_finger_on(FpDevice *_dev, void *data);
 
 static void
 report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
@@ -716,6 +733,7 @@ report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
   if (!self->deactivating && !error)
   {
     fpi_image_device_report_finger_status(dev, FALSE);
+    fp_err("Finger off");
   }
   self->loop_running = FALSE;
 
@@ -724,12 +742,25 @@ report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
   else if (error)
     fpi_image_device_session_error(dev, error);
   else
-    start_report_finger_on(dev);
+  {
+    GSource *timeout;
+    char *name;
+
+    // schedule state change instead of calling it directly to allow all actions
+    // related to the previous state to complete
+    timeout = fpi_device_add_timeout(_dev, 10,
+                                     start_report_finger_on,
+                                     NULL, NULL);
+    name = g_strdup_printf("start report finger on");
+    g_source_set_name(timeout, name);
+    g_free(name);
+  }
 }
 
 static void
-start_report_finger_off(FpImageDevice *dev)
+start_report_finger_off(FpDevice *_dev, void *data)
 {
+  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   self = FPI_DEVICE_VFS7552(dev);
   FpiSsm *ssm;
@@ -780,12 +811,25 @@ capture_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
   else if (error)
     fpi_image_device_session_error(dev, error);
   else
-    start_report_finger_off(dev);
+  {
+    GSource *timeout;
+    char *name;
+
+    // schedule state change instead of calling it directly to allow all actions
+    // related to the previous state to complete
+    timeout = fpi_device_add_timeout(_dev, 10,
+                                     start_report_finger_off,
+                                     NULL, NULL);
+    name = g_strdup_printf("start report finger off");
+    g_source_set_name(timeout, name);
+    g_free(name);
+  }
 }
 
 static void
-start_capture(FpImageDevice *dev)
+start_capture(FpDevice *_dev, void *data)
 {
+  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   self = FPI_DEVICE_VFS7552(dev);
   FpiSsm *ssm;
@@ -818,12 +862,25 @@ report_finger_on(FpiSsm *ssm, FpDevice *_dev, GError *error)
   else if (error)
     fpi_image_device_session_error(dev, error);
   else
-    start_capture(dev);
+  {
+    GSource *timeout;
+    char *name;
+
+    // schedule state change instead of calling it directly to allow all actions
+    // related to the previous state to complete
+    timeout = fpi_device_add_timeout(_dev, 10,
+                                     start_capture,
+                                     NULL, NULL);
+    name = g_strdup_printf("start capture");
+    g_source_set_name(timeout, name);
+    g_free(name);
+  }
 }
 
 static void
-start_report_finger_on(FpImageDevice *dev)
+start_report_finger_on(FpDevice *_dev, void *data)
 {
+  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   self = FPI_DEVICE_VFS7552(dev);
   FpiSsm *ssm;
@@ -856,7 +913,7 @@ activate_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
   else if (error)
     fpi_image_device_session_error(dev, error);
   else
-    start_report_finger_on(dev);
+    start_report_finger_on(_dev, NULL);
 }
 
 static void
@@ -978,7 +1035,7 @@ fpi_device_vfs7552_class_init(FpDeviceVfs7552Class *klass)
   img_class->activate = dev_activate;
   img_class->img_open = dev_open;
 
-  //img_class->bz3_threshold = 20;
+  img_class->bz3_threshold = 20;
 
   img_class->img_width = VFS7552_IMAGE_WIDTH;
   img_class->img_height = VFS7552_IMAGE_HEIGHT;
