@@ -111,17 +111,23 @@ G_DEFINE_TYPE(FpDeviceVfs7552, fpi_device_vfs7552, FP_TYPE_IMAGE_DEVICE);
 
 /* ======================= States ======================== */
 
-enum
+enum open_states
 {
   DEV_OPEN_START,
   DEV_OPEN_NUM_STATES
 };
 
-enum
+enum activate_states
 {
-  AWAIT_FINGER_ON_INIT,
-  AWAIT_FINGER_ON_INTERRUPT_QUERY,
-  AWAIT_FINGER_ON_INTERRUPT_CHECK,
+  ACTIVATE_INIT,
+  ACTIVATE_INTERRUPT_QUERY,
+  ACTIVATE_INTERRUPT_CHECK,
+  ACTIVATE_FINALIZE,
+  ACTIVATE_NUM_STATES
+};
+
+enum await_finger_on_states
+{
   AWAIT_FINGER_ON_QUERY_DATA_READY,
   AWAIT_FINGER_ON_CHECK_DATA_READY,
   AWAIT_FINGER_ON_REQUEST_CHUNK,
@@ -131,7 +137,7 @@ enum
   AWAIT_FINGER_ON_NUM_STATES
 };
 
-enum
+enum capture_states
 {
   CAPTURE_QUERY_DATA_READY,
   CAPTURE_CHECK_DATA_READY,
@@ -139,7 +145,7 @@ enum
   CAPTURE_READ_CHUNK,
   CAPTURE_COMPLETE,
   CAPTURE_DISABLE_SENSOR,
-  CAPTURE_DISABLE_COMPLETE,
+  CAPTURE_FINALIZE,
   CAPTURE_NUM_STATES
 };
 
@@ -413,6 +419,29 @@ report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
     fpi_image_device_session_error(dev, error);
 }
 
+static void
+activate_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
+{
+  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
+  FpDeviceVfs7552 *self;
+
+  self = FPI_DEVICE_VFS7552(_dev);
+  if (self->init_sequence.receive_buf != NULL)
+    g_free(self->init_sequence.receive_buf);
+
+  self->init_sequence.receive_buf = NULL;
+  if (!self->deactivating && !error)
+  {
+    fpi_image_device_activate_complete(dev, error);
+  }
+  self->loop_running = FALSE;
+
+  if (self->deactivating)
+    fpi_image_device_deactivate_complete(dev, error);
+  else if (error)
+    fpi_image_device_session_error(dev, error);
+}
+
 /* =========== Image Capturing and Processing ============ */
 
 enum
@@ -567,12 +596,11 @@ open_loop(FpiSsm *ssm, FpDevice *_dev)
 }
 
 static void
-await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
+activate_run_state(FpiSsm *ssm, FpDevice *_dev)
 {
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
   unsigned char *receive_buf;
-  int variance;
 
   self = FPI_DEVICE_VFS7552(_dev);
   if (self->deactivating)
@@ -584,7 +612,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
 
   switch (fpi_ssm_get_cur_state(ssm))
   {
-  case AWAIT_FINGER_ON_INIT:
+    case ACTIVATE_INIT:
     // This sequence prepares the sensor for capturing the image.
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_initiate_capture);
@@ -594,10 +622,10 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
       self->init_sequence.receive_buf =
           g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = VFS7552_DEFAULT_WAIT_TIMEOUT;
-    usb_exchange_async(ssm, &self->init_sequence, "AFON INITIATE CAPTURE");
+    usb_exchange_async(ssm, &self->init_sequence, "ACTIVATE INIT");
     break;
 
-  case AWAIT_FINGER_ON_INTERRUPT_QUERY:
+  case ACTIVATE_INTERRUPT_QUERY:
     // This sequence configures the sensor to listen to finger placement events.
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_wait_finger_init);
@@ -607,15 +635,15 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
       self->init_sequence.receive_buf =
           g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
     self->init_sequence.timeout = 0; // Do not time out
-    usb_exchange_async(ssm, &self->init_sequence, "AFON WAIT FOR FINGER");
+    usb_exchange_async(ssm, &self->init_sequence, "ACTIVATE INTERRUPT QUERY");
     break;
 
-  case AWAIT_FINGER_ON_INTERRUPT_CHECK:
+  case ACTIVATE_INTERRUPT_CHECK:
     receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
     if (receive_buf[0] == interrupt_ok[0])
     {
       // This seems to mean: "Sensor is all good"
-      fpi_ssm_jump_to_state(ssm, AWAIT_FINGER_ON_INTERRUPT_QUERY);
+      fpi_ssm_jump_to_state(ssm, ACTIVATE_INTERRUPT_QUERY);
     }
     else if (receive_buf[0] == interrupt_ready[0])
     {
@@ -635,6 +663,30 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
     }
     break;
 
+  case ACTIVATE_FINALIZE:
+    fpi_ssm_mark_completed(ssm);
+    break;
+  }
+}
+
+static void
+await_finger_on_run_state(FpiSsm *ssm, FpDevice *_dev)
+{
+  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
+  FpDeviceVfs7552 *self;
+  unsigned char *receive_buf;
+  int variance;
+
+  self = FPI_DEVICE_VFS7552(_dev);
+  if (self->deactivating)
+  {
+    fp_dbg("deactivating, marking completed");
+    fpi_ssm_mark_completed(ssm);
+    return;
+  }
+
+  switch (fpi_ssm_get_cur_state(ssm))
+  {
   case AWAIT_FINGER_ON_QUERY_DATA_READY:
     self->init_sequence.stepcount =
         G_N_ELEMENTS(vfs7552_data_ready_query);
@@ -704,7 +756,7 @@ await_finger_on_loop(FpiSsm *ssm, FpDevice *_dev)
 }
 
 static void
-capture_loop(FpiSsm *ssm, FpDevice *_dev)
+capture_run_state(FpiSsm *ssm, FpDevice *_dev)
 {
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
@@ -773,7 +825,7 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
   case CAPTURE_COMPLETE:
     if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE)
     {
-      fpi_ssm_mark_completed(ssm);
+      fpi_ssm_jump_to_state(ssm, CAPTURE_FINALIZE);
     }
     else if (self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
     {
@@ -800,7 +852,7 @@ capture_loop(FpiSsm *ssm, FpDevice *_dev)
     usb_exchange_async(ssm, &self->init_sequence, "STOP CAPTURE");
     break;
 
-  case CAPTURE_DISABLE_COMPLETE:
+  case CAPTURE_FINALIZE:
     fpi_ssm_mark_completed(ssm);
     break;
   }
@@ -816,7 +868,7 @@ validity_change_state(FpImageDevice *dev)
   self = FPI_DEVICE_VFS7552(dev);
   self->loop_running = TRUE;
   self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
-  ssm = fpi_ssm_new(FP_DEVICE(dev), capture_loop, CAPTURE_NUM_STATES);
+  ssm = fpi_ssm_new(FP_DEVICE(dev), capture_run_state, CAPTURE_NUM_STATES);
   fpi_ssm_start(ssm, report_finger_off);
 }
 
@@ -845,13 +897,13 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
     // This state is called after activation completed or another enroll stage started
     self->loop_running = TRUE;
     self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
-    ssm = fpi_ssm_new(FP_DEVICE(dev), await_finger_on_loop, AWAIT_FINGER_ON_NUM_STATES);
+    ssm = fpi_ssm_new(FP_DEVICE(dev), await_finger_on_run_state, AWAIT_FINGER_ON_NUM_STATES);
     fpi_ssm_start(ssm, report_finger_on);
     break;
   case FPI_IMAGE_DEVICE_STATE_CAPTURE:
     self->loop_running = TRUE;
     self->dev_state = FPI_IMAGE_DEVICE_STATE_CAPTURE;
-    ssm = fpi_ssm_new(FP_DEVICE(dev), capture_loop, CAPTURE_NUM_STATES);
+    ssm = fpi_ssm_new(FP_DEVICE(dev), capture_run_state, CAPTURE_NUM_STATES);
     fpi_ssm_start(ssm, submit_image);
     break;
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF:
@@ -930,11 +982,14 @@ static void
 dev_activate(FpImageDevice *dev)
 {
   FpDeviceVfs7552 *self;
+  FpiSsm *ssm;
 
   self = FPI_DEVICE_VFS7552(dev);
   self->deactivating = FALSE;
+  self->loop_running = TRUE;
 
-  fpi_image_device_activate_complete(dev, NULL);
+  ssm = fpi_ssm_new(FP_DEVICE(dev), activate_run_state, ACTIVATE_NUM_STATES);
+  fpi_ssm_start(ssm, activate_complete);
 }
 
 static void
@@ -978,7 +1033,7 @@ fpi_device_vfs7552_class_init(FpDeviceVfs7552Class *klass)
   img_class->deactivate = dev_deactivate;
   img_class->change_state = dev_change_state;
 
-  img_class->bz3_threshold = 20;
+  //img_class->bz3_threshold = 20;
 
   img_class->img_width = VFS7552_IMAGE_WIDTH;
   img_class->img_height = VFS7552_IMAGE_HEIGHT;
