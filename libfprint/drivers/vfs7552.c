@@ -26,7 +26,8 @@
 #define VFS7552_CONTROL_PIXELS (8)
 #define VFS7552_LINE_SIZE (VFS7552_IMAGE_WIDTH + VFS7552_CONTROL_PIXELS)
 #define VFS7552_IMAGE_CHUNKS (3)
-#define VARIANCE_THRESHOLD 600
+#define CAPTURE_VARIANCE_THRESHOLD 700
+#define FINGER_OFF_VARIANCE_THRESHOLD 200
 
 /* =================== sync/async USB transfer sequence ==================== */
 
@@ -331,7 +332,7 @@ process_chunk(FpDeviceVfs7552 *self, int transferred)
   unsigned char *ptr;
   int n_bytes_in_chunk;
   int n_lines;
-  int i, j;
+  int i;
 
   ptr = self->capture_buffer;
   n_bytes_in_chunk = ptr[2] + ptr[3] * 256;
@@ -352,19 +353,6 @@ process_chunk(FpDeviceVfs7552 *self, int transferred)
   {
     self->image_index = 0;
     self->chunks_captured = 0;
-    // Scale the image
-    for (j = 0; j < VFS7552_IMAGE_HEIGHT; j++)
-    {
-      for (i = 0; i < VFS7552_IMAGE_WIDTH; i++)
-      {
-        int ref = j * VFS7552_IMAGE_WIDTH + i;
-        int ref_new = 4 * j * VFS7552_IMAGE_WIDTH + 2 * i;
-        self->scaled_image[ref_new] = self->image[ref];
-        self->scaled_image[ref_new + 1] = self->image[ref];
-        self->scaled_image[ref_new + 2 * VFS7552_IMAGE_WIDTH] = self->image[ref];
-        self->scaled_image[ref_new + 2 * VFS7552_IMAGE_WIDTH + 1] = self->image[ref];
-      }
-    }
     return CHUNK_READ_FINISHED;
   }
   return CHUNK_READ_NEED_MORE;
@@ -427,34 +415,129 @@ capture_chunk_async(FpiSsm *ssm, FpDevice *_dev, guint timeout)
 }
 
 static void
-capture_init(FpDeviceVfs7552 *self)
+reset_state(FpDeviceVfs7552 *self)
 {
   self->image_index = 0;
   self->chunks_captured = 0;
+
+  if (self->image != NULL)
+    g_free(self->image);
+  self->image = g_new0(unsigned char, VFS7552_IMAGE_SIZE);
+
+  if (self->scaled_image != NULL)
+    g_free(self->scaled_image);
+  self->scaled_image = g_new0(unsigned char, 4 * VFS7552_IMAGE_SIZE);
 }
 
 /* ================ Run States ================= */
 
 static void
-open_run_state(FpiSsm *ssm, FpDevice *_dev)
+capture_run_state(FpiSsm *ssm, FpDevice *_dev)
 {
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
+  unsigned char *receive_buf;
+  int variance;
 
   self = FPI_DEVICE_VFS7552(_dev);
-
+  if (self->deactivating)
+  {
+    fp_dbg("deactivating, marking completed");
+    fpi_ssm_mark_completed(ssm);
+    return;
+  }
   switch (fpi_ssm_get_cur_state(ssm))
   {
-  case DEV_OPEN_START:
+  case CAPTURE_QUERY_DATA_READY:
     self->init_sequence.stepcount =
-        G_N_ELEMENTS(vfs7552_initialization);
-    self->init_sequence.actions = vfs7552_initialization;
+        G_N_ELEMENTS(vfs7552_data_ready_query);
+    self->init_sequence.actions = vfs7552_data_ready_query;
     self->init_sequence.device = dev;
     if (self->init_sequence.receive_buf == NULL)
       self->init_sequence.receive_buf =
           g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
-    self->init_sequence.timeout = VFS7552_DEFAULT_WAIT_TIMEOUT;
-    usb_exchange_async(ssm, &self->init_sequence, "DEVICE OPEN");
+    self->init_sequence.timeout = 0; // Do not time out
+    usb_exchange_async(ssm, &self->init_sequence, "QUERY DATA READY");
+    break;
+
+  case CAPTURE_CHECK_DATA_READY:
+    receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
+    if (receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0])
+    {
+      fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
+    }
+    else if (receive_buf[0] == vfs7552_is_image_ready_resp_ready[0])
+    {
+      reset_state(self);
+      fpi_ssm_next_state(ssm);
+    }
+    else if (receive_buf[0] == vfs7552_is_image_ready_resp_finger_off[0])
+    {
+      fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
+    }
+    else
+    {
+      fp_dbg("Unknown response 0x%02x", receive_buf[0]);
+      fpi_image_device_session_error(dev, NULL);
+      fpi_ssm_mark_failed(ssm, NULL);
+    }
+    break;
+
+  case CAPTURE_REQUEST_CHUNK:
+    self->init_sequence.stepcount =
+        G_N_ELEMENTS(vfs7552_request_chunk);
+    self->init_sequence.actions = vfs7552_request_chunk;
+    self->init_sequence.device = dev;
+    if (self->init_sequence.receive_buf == NULL)
+      self->init_sequence.receive_buf =
+          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    self->init_sequence.timeout = 1000;
+    usb_exchange_async(ssm, &self->init_sequence, "REQUEST CHUNK");
+    break;
+
+  case CAPTURE_READ_CHUNK:
+    capture_chunk_async(ssm, _dev, 1000);
+    break;
+
+  case CAPTURE_COMPLETE:
+    // Calculate the variance of the captured image
+    variance = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
+    fp_dbg("variance = %d\n", variance);
+
+    if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE)
+    {
+      // If the finger is placed on the sensor, the variance should ideally increase above a certain
+      // threshold. Otherwise request a new image and test again.
+      if (variance > CAPTURE_VARIANCE_THRESHOLD)
+        fpi_ssm_mark_completed(ssm);
+      else
+        fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
+    }
+    else if (self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
+    {
+      // If the finger is removed from the sensor, the variance should ideally drop below a certain
+      // threshold.
+      if (variance < FINGER_OFF_VARIANCE_THRESHOLD)
+        fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
+      else
+        fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
+    }
+    break;
+
+  case CAPTURE_DISABLE_SENSOR:
+    self->init_sequence.stepcount =
+        G_N_ELEMENTS(vfs7552_stop_capture);
+    self->init_sequence.actions = vfs7552_stop_capture;
+    self->init_sequence.device = dev;
+    if (self->init_sequence.receive_buf == NULL)
+      self->init_sequence.receive_buf =
+          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    self->init_sequence.timeout = 1000;
+    usb_exchange_async(ssm, &self->init_sequence, "STOP CAPTURE");
+    break;
+
+  case CAPTURE_FINALIZE:
+    fpi_ssm_mark_completed(ssm);
     break;
   }
 }
@@ -534,112 +617,25 @@ activate_run_state(FpiSsm *ssm, FpDevice *_dev)
 }
 
 static void
-capture_run_state(FpiSsm *ssm, FpDevice *_dev)
+open_run_state(FpiSsm *ssm, FpDevice *_dev)
 {
   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
   FpDeviceVfs7552 *self;
-  unsigned char *receive_buf;
-  int variance;
 
   self = FPI_DEVICE_VFS7552(_dev);
-  if (self->deactivating)
-  {
-    fp_dbg("deactivating, marking completed");
-    fpi_ssm_mark_completed(ssm);
-    return;
-  }
+
   switch (fpi_ssm_get_cur_state(ssm))
   {
-  case CAPTURE_QUERY_DATA_READY:
+  case DEV_OPEN_START:
     self->init_sequence.stepcount =
-        G_N_ELEMENTS(vfs7552_data_ready_query);
-    self->init_sequence.actions = vfs7552_data_ready_query;
+        G_N_ELEMENTS(vfs7552_initialization);
+    self->init_sequence.actions = vfs7552_initialization;
     self->init_sequence.device = dev;
     if (self->init_sequence.receive_buf == NULL)
       self->init_sequence.receive_buf =
           g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
-    self->init_sequence.timeout = 0; // Do not time out
-    usb_exchange_async(ssm, &self->init_sequence, "QUERY DATA READY");
-    break;
-
-  case CAPTURE_CHECK_DATA_READY:
-    receive_buf = ((unsigned char *)self->init_sequence.receive_buf);
-    if (receive_buf[0] == vfs7552_is_image_ready_resp_not_ready[0])
-    {
-      fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
-    }
-    else if (receive_buf[0] == vfs7552_is_image_ready_resp_ready[0])
-    {
-      capture_init(self);
-      fpi_ssm_next_state(ssm);
-    }
-    else if (receive_buf[0] == vfs7552_is_image_ready_resp_finger_off[0])
-    {
-      fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
-    }
-    else
-    {
-      fp_dbg("Unknown response 0x%02x", receive_buf[0]);
-      fpi_image_device_session_error(dev, NULL);
-      fpi_ssm_mark_failed(ssm, NULL);
-    }
-    break;
-
-  case CAPTURE_REQUEST_CHUNK:
-    self->init_sequence.stepcount =
-        G_N_ELEMENTS(vfs7552_request_chunk);
-    self->init_sequence.actions = vfs7552_request_chunk;
-    self->init_sequence.device = dev;
-    if (self->init_sequence.receive_buf == NULL)
-      self->init_sequence.receive_buf =
-          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
-    self->init_sequence.timeout = 1000;
-    usb_exchange_async(ssm, &self->init_sequence, "REQUEST CHUNK");
-    break;
-
-  case CAPTURE_READ_CHUNK:
-    capture_chunk_async(ssm, _dev, 1000);
-    break;
-
-  case CAPTURE_COMPLETE:
-    // Calculate the variance of the captured image
-    variance = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
-    fp_dbg("variance = %d\n", variance);
-
-    if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE)
-    {
-      // If the finger is placed on the sensor, the variance should ideally increase above a certain
-      // threshold. Otherwise request a new image and test again.
-      if (variance > VARIANCE_THRESHOLD)
-        fpi_ssm_jump_to_state(ssm, CAPTURE_FINALIZE);
-      else
-        fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
-    }
-    else if (self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
-    {
-      // If the finger is removed from the sensor, the variance should ideally drop below a certain
-      // threshold.
-      if (variance < VARIANCE_THRESHOLD)
-        fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
-      else
-        fpi_ssm_jump_to_state(ssm, CAPTURE_QUERY_DATA_READY);
-    }
-    break;
-
-  case CAPTURE_DISABLE_SENSOR:
-    self->init_sequence.stepcount =
-        G_N_ELEMENTS(vfs7552_stop_capture);
-    self->init_sequence.actions = vfs7552_stop_capture;
-    self->init_sequence.device = dev;
-    if (self->init_sequence.receive_buf == NULL)
-      self->init_sequence.receive_buf =
-          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
-    self->init_sequence.timeout = 1000;
-    usb_exchange_async(ssm, &self->init_sequence, "STOP CAPTURE");
-    break;
-
-  case CAPTURE_FINALIZE:
-    fpi_ssm_mark_completed(ssm);
+    self->init_sequence.timeout = VFS7552_DEFAULT_WAIT_TIMEOUT;
+    usb_exchange_async(ssm, &self->init_sequence, "DEVICE OPEN");
     break;
   }
 }
@@ -662,6 +658,8 @@ report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
     fpi_image_device_report_finger_status(dev, FALSE);
   }
   self->loop_running = FALSE;
+
+  reset_state(self);
 
   if (self->deactivating)
     fpi_image_device_deactivate_complete(dev, error);
@@ -695,6 +693,21 @@ capture_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
   if (!self->deactivating && !error)
   {
     fpi_image_device_report_finger_status(dev, TRUE);
+
+    // Scale the image
+    for (int j = 0; j < VFS7552_IMAGE_HEIGHT; j++)
+    {
+      for (int i = 0; i < VFS7552_IMAGE_WIDTH; i++)
+      {
+        int ref = j * VFS7552_IMAGE_WIDTH + i;
+        int ref_new = 4 * j * VFS7552_IMAGE_WIDTH + 2 * i;
+        self->scaled_image[ref_new] = self->image[ref];
+        self->scaled_image[ref_new + 1] = self->image[ref];
+        self->scaled_image[ref_new + 2 * VFS7552_IMAGE_WIDTH] = self->image[ref];
+        self->scaled_image[ref_new + 2 * VFS7552_IMAGE_WIDTH + 1] = self->image[ref];
+      }
+    }
+
     FpImage *img;
     img = fp_image_new(2 * VFS7552_IMAGE_WIDTH,
                        2 * VFS7552_IMAGE_HEIGHT);
@@ -709,7 +722,8 @@ capture_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
   else if (error)
     fpi_image_device_session_error(dev, error);
   else
-    start_report_finger_off(dev);
+    fpi_image_device_report_finger_status(dev, FALSE);
+  //start_report_finger_off(dev);
 }
 
 static void
