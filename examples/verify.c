@@ -124,7 +124,7 @@ on_match_cb (FpDevice *dev, FpPrint *match, FpPrint *print,
       return;
     }
 
-  if (print && fp_device_supports_capture (dev) &&
+  if (print && fp_print_get_image (print) &&
       print_image_save (print, "verify.pgm"))
     g_print ("Print image saved as verify.pgm\n");
 
@@ -256,7 +256,7 @@ start_verification (FpDevice *dev, VerifyData *verify_data)
 
       g_print ("Print loaded. Time to verify!\n");
       fp_device_verify (dev, verify_print, verify_data->cancellable,
-                        NULL, NULL, NULL,
+                        on_match_cb, verify_data, NULL,
                         (GAsyncReadyCallback) on_verify_completed,
                         verify_data);
     }

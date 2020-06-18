@@ -162,6 +162,13 @@ main (int argc, const char *argv[])
       return EXIT_FAILURE;
     }
 
+  if (!fp_device_supports_capture (dev))
+    {
+      g_warning ("Device %s doesn't support capture",
+                 fp_device_get_name (dev));
+      return EXIT_FAILURE;
+    }
+
   capture_data = g_new0 (CaptureData, 1);
   capture_data->ret_value = EXIT_FAILURE;
   capture_data->loop = g_main_loop_new (NULL, FALSE);

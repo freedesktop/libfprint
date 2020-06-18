@@ -241,6 +241,8 @@ dev_capture_start_cb (FpDevice     *dev,
       if (error->domain == FP_DEVICE_RETRY ||
           g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
         libfprint_demo_set_mode (win, RETRY_MODE);
+      else if (g_error_matches (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_NOT_SUPPORTED))
+        libfprint_demo_set_mode (win, NOIMAGING_MODE);
       else
         libfprint_demo_set_mode (win, ERROR_MODE);
       return;

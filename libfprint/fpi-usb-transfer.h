@@ -47,10 +47,10 @@ typedef void (*FpiUsbTransferCallback)(FpiUsbTransfer *transfer,
  * Type of the transfer.
  */
 typedef enum  {
-  FP_TRANSFER_NONE = 0,
-  FP_TRANSFER_BULK,
-  FP_TRANSFER_CONTROL,
-  FP_TRANSFER_INTERRUPT,
+  FP_TRANSFER_NONE = -1,
+  FP_TRANSFER_CONTROL = 0,
+  FP_TRANSFER_BULK = 2,
+  FP_TRANSFER_INTERRUPT = 3,
 } FpiTransferType;
 
 /**

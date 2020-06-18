@@ -105,6 +105,7 @@ fpi_usb_transfer_new (FpDevice * device)
 
   self = g_slice_new0 (FpiUsbTransfer);
   self->ref_count = 1;
+  self->type = FP_TRANSFER_NONE;
 
   self->device = device;
 

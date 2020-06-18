@@ -94,6 +94,8 @@ static void
 fp_image_device_change_state (FpImageDevice *self, FpiImageDeviceState state)
 {
   FpImageDevicePrivate *priv = fp_image_device_get_instance_private (self);
+  g_autofree char *prev_state_str = NULL;
+  g_autofree char *state_str = NULL;
 
   /* Cannot change to inactive using this function. */
   g_assert (state != FPI_IMAGE_DEVICE_STATE_INACTIVE);
@@ -102,7 +104,10 @@ fp_image_device_change_state (FpImageDevice *self, FpiImageDeviceState state)
    * next operation. */
   g_clear_handle_id (&priv->pending_activation_timeout_id, g_source_remove);
 
-  fp_dbg ("Image device internal state change from %d to %d\n", priv->state, state);
+  prev_state_str = g_enum_to_string (FPI_TYPE_IMAGE_DEVICE_STATE, priv->state);
+  state_str = g_enum_to_string (FPI_TYPE_IMAGE_DEVICE_STATE, state);
+  fp_dbg ("Image device internal state change from %s to %s\n",
+          prev_state_str, state_str);
 
   priv->state = state;
   g_object_notify (G_OBJECT (self), "fpi-image-device-state");
@@ -121,6 +126,7 @@ fp_image_device_enroll_maybe_await_finger_on (FpImageDevice *self)
     }
   else
     {
+      fp_dbg ("Awaiting finger on");
       priv->enroll_await_on_pending = TRUE;
     }
 }

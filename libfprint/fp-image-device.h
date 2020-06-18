@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <fp-device.h>
+#include "fp-device.h"
 
 G_BEGIN_DECLS
 

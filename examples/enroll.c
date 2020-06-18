@@ -112,7 +112,7 @@ on_enroll_progress (FpDevice *device,
       return;
     }
 
-  if (fp_device_supports_capture (device) &&
+  if (print && fp_print_get_image (print) &&
       print_image_save (print, "enrolled.pgm"))
     printf ("Wrote scanned image to enrolled.pgm\n");
 
