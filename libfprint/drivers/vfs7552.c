@@ -98,6 +98,7 @@ struct _FpDeviceVfs7552
 
   unsigned char *capture_buffer;
   FpiImageDeviceState dev_state;
+  FpiImageDeviceState dev_next_state;
   gboolean background_captured;
   unsigned char *background;
   unsigned char *image;
@@ -471,30 +472,29 @@ reset_state(FpDeviceVfs7552 *self)
 
 /* ================ Run States ================= */
 
-// static void
-// deactivate_run_state(FpiSsm *ssm, FpDevice *_dev)
-// {
-//   // TODO: Properly implement this deactivation step (even though it is not crucial for the operation)
-//   FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
-//   FpDeviceVfs7552 *self;
+static void
+deactivate_run_state(FpiSsm *ssm, FpDevice *_dev)
+{
+  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
+  FpDeviceVfs7552 *self;
 
-//   self = FPI_DEVICE_VFS7552(_dev);
+  self = FPI_DEVICE_VFS7552(_dev);
 
-//   switch (fpi_ssm_get_cur_state(ssm))
-//   {
-//   case DEACTIVATE_DISABLE_SENSOR:
-//     self->init_sequence.stepcount =
-//         G_N_ELEMENTS(vfs7552_stop_capture);
-//     self->init_sequence.actions = vfs7552_stop_capture;
-//     self->init_sequence.device = dev;
-//     if (self->init_sequence.receive_buf == NULL)
-//       self->init_sequence.receive_buf =
-//           g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
-//     self->init_sequence.timeout = 1000;
-//     usb_exchange_async(ssm, &self->init_sequence, "STOP CAPTURE");
-//     break;
-//   }
-// }
+  switch (fpi_ssm_get_cur_state(ssm))
+  {
+  case DEACTIVATE_DISABLE_SENSOR:
+    self->init_sequence.stepcount =
+        G_N_ELEMENTS(vfs7552_stop_capture);
+    self->init_sequence.actions = vfs7552_stop_capture;
+    self->init_sequence.device = dev;
+    if (self->init_sequence.receive_buf == NULL)
+      self->init_sequence.receive_buf =
+          g_malloc0(VFS7552_RECEIVE_BUF_SIZE);
+    self->init_sequence.timeout = 1000;
+    usb_exchange_async(ssm, &self->init_sequence, "STOP CAPTURE");
+    break;
+  }
+}
 
 static void
 capture_run_state(FpiSsm *ssm, FpDevice *_dev)
@@ -717,7 +717,33 @@ open_run_state(FpiSsm *ssm, FpDevice *_dev)
 
 /* ============= SSM Finalization Functions ============== */
 
-static void start_report_finger_on(FpDevice *_dev, void *data);
+static void
+deactivation_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
+{
+  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
+  FpDeviceVfs7552 *self;
+
+  self = FPI_DEVICE_VFS7552(_dev);
+  if (self->init_sequence.receive_buf != NULL)
+    g_free(self->init_sequence.receive_buf);
+  self->init_sequence.receive_buf = NULL;
+
+  fpi_image_device_deactivate_complete(dev, error);
+  self->loop_running = FALSE;
+}
+
+static void
+start_deactivation(FpDevice *_dev, void *data)
+{
+  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
+  FpDeviceVfs7552 *self;
+  self = FPI_DEVICE_VFS7552(dev);
+  FpiSsm *ssm;
+  self->loop_running = TRUE;
+  self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
+  ssm = fpi_ssm_new(FP_DEVICE(dev), deactivate_run_state, DEACTIVATE_NUM_STATES);
+  fpi_ssm_start(ssm, deactivation_complete);
+}
 
 static void
 report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
@@ -737,10 +763,6 @@ report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
   self->loop_running = FALSE;
 
   if (self->deactivating)
-    fpi_image_device_deactivate_complete(dev, error);
-  else if (error)
-    fpi_image_device_session_error(dev, error);
-  else
   {
     GSource *timeout;
     char *name;
@@ -748,12 +770,14 @@ report_finger_off(FpiSsm *ssm, FpDevice *_dev, GError *error)
     // schedule state change instead of calling it directly to allow all actions
     // related to the previous state to complete
     timeout = fpi_device_add_timeout(_dev, 10,
-                                     start_report_finger_on,
+                                     start_deactivation,
                                      NULL, NULL);
-    name = g_strdup_printf("start report finger on");
+    name = g_strdup_printf("start deactivation");
     g_source_set_name(timeout, name);
     g_free(name);
   }
+  else if (error)
+    fpi_image_device_session_error(dev, error);
 }
 
 static void
@@ -806,10 +830,6 @@ capture_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
   self->loop_running = FALSE;
 
   if (self->deactivating)
-    fpi_image_device_deactivate_complete(dev, error);
-  else if (error)
-    fpi_image_device_session_error(dev, error);
-  else
   {
     GSource *timeout;
     char *name;
@@ -817,12 +837,14 @@ capture_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
     // schedule state change instead of calling it directly to allow all actions
     // related to the previous state to complete
     timeout = fpi_device_add_timeout(_dev, 10,
-                                     start_report_finger_off,
+                                     start_deactivation,
                                      NULL, NULL);
-    name = g_strdup_printf("start report finger off");
+    name = g_strdup_printf("start deactivation");
     g_source_set_name(timeout, name);
     g_free(name);
   }
+  else if (error)
+    fpi_image_device_session_error(dev, error);
 }
 
 static void
@@ -857,10 +879,6 @@ report_finger_on(FpiSsm *ssm, FpDevice *_dev, GError *error)
   self->loop_running = FALSE;
 
   if (self->deactivating)
-    fpi_image_device_deactivate_complete(dev, error);
-  else if (error)
-    fpi_image_device_session_error(dev, error);
-  else
   {
     GSource *timeout;
     char *name;
@@ -868,12 +886,14 @@ report_finger_on(FpiSsm *ssm, FpDevice *_dev, GError *error)
     // schedule state change instead of calling it directly to allow all actions
     // related to the previous state to complete
     timeout = fpi_device_add_timeout(_dev, 10,
-                                     start_capture,
+                                     start_deactivation,
                                      NULL, NULL);
-    name = g_strdup_printf("start capture");
+    name = g_strdup_printf("start deactivation");
     g_source_set_name(timeout, name);
     g_free(name);
   }
+  else if (error)
+    fpi_image_device_session_error(dev, error);
 }
 
 static void
@@ -908,11 +928,21 @@ activate_complete(FpiSsm *ssm, FpDevice *_dev, GError *error)
   self->loop_running = FALSE;
 
   if (self->deactivating)
-    fpi_image_device_deactivate_complete(dev, error);
+  {
+    GSource *timeout;
+    char *name;
+
+    // schedule state change instead of calling it directly to allow all actions
+    // related to the previous state to complete
+    timeout = fpi_device_add_timeout(_dev, 10,
+                                     start_deactivation,
+                                     NULL, NULL);
+    name = g_strdup_printf("start deactivation");
+    g_source_set_name(timeout, name);
+    g_free(name);
+  }
   else if (error)
     fpi_image_device_session_error(dev, error);
-  else
-    start_report_finger_on(_dev, NULL);
 }
 
 static void
@@ -957,10 +987,59 @@ dev_deactivate(FpImageDevice *dev)
     fpi_image_device_deactivate_complete(dev, NULL);
 }
 
-/**
- * The second step after opening the connection to the device is the device activation.
- * We don't actually do any communication with the device here.
- */
+static void
+dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
+{
+  GSource *timeout;
+  char *name;
+
+  switch (state)
+  {
+  case FPI_IMAGE_DEVICE_STATE_INACTIVE:
+  case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON:
+    // schedule state change instead of calling it directly to allow all actions
+    // related to the previous state to complete
+    timeout = fpi_device_add_timeout(FP_DEVICE(dev), 10,
+                                     start_report_finger_on,
+                                     NULL, NULL);
+
+    name = g_strdup_printf("dev_change_state to %d", state);
+    g_source_set_name(timeout, name);
+    g_free(name);
+
+    break;
+
+  case FPI_IMAGE_DEVICE_STATE_CAPTURE:
+    // schedule state change instead of calling it directly to allow all actions
+    // related to the previous state to complete
+    timeout = fpi_device_add_timeout(FP_DEVICE(dev), 10,
+                                     start_capture,
+                                     NULL, NULL);
+
+    name = g_strdup_printf("dev_change_state to %d", state);
+    g_source_set_name(timeout, name);
+    g_free(name);
+
+    break;
+
+  case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF:
+    // schedule state change instead of calling it directly to allow all actions
+    // related to the previous state to complete
+    timeout = fpi_device_add_timeout(FP_DEVICE(dev), 10,
+                                     start_report_finger_off,
+                                     NULL, NULL);
+
+    name = g_strdup_printf("dev_change_state to %d", state);
+    g_source_set_name(timeout, name);
+    g_free(name);
+
+    break;
+
+  default:
+    g_assert_not_reached();
+  }
+}
+
 static void
 dev_activate(FpImageDevice *dev)
 {
@@ -974,10 +1053,6 @@ dev_activate(FpImageDevice *dev)
   fpi_ssm_start(ssm, activate_complete);
 }
 
-/**
- * This is the first entrypoint that's called by libfprint. Here we claim the interface and start
- * the open loop.
- */
 static void
 dev_open(FpImageDevice *dev)
 {
@@ -1031,6 +1106,7 @@ fpi_device_vfs7552_class_init(FpDeviceVfs7552Class *klass)
 
   img_class->img_close = dev_close;
   img_class->deactivate = dev_deactivate;
+  img_class->change_state = dev_change_state;
   img_class->activate = dev_activate;
   img_class->img_open = dev_open;
 
