@@ -98,7 +98,7 @@ struct _FpDeviceVfs7552
 
   unsigned char *capture_buffer;
   FpiImageDeviceState dev_state;
-  FpiImageDeviceState dev_next_state;
+  FpiImageDeviceState dev_state_next;
   gboolean background_captured;
   unsigned char *background;
   unsigned char *image;
@@ -787,7 +787,7 @@ start_report_finger_off(FpDevice *_dev, void *data)
   self = FPI_DEVICE_VFS7552(dev);
   FpiSsm *ssm;
   self->loop_running = TRUE;
-  self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
+  //self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
   ssm = fpi_ssm_new(FP_DEVICE(dev), capture_run_state, CAPTURE_NUM_STATES);
   fpi_ssm_start(ssm, report_finger_off);
 }
@@ -855,7 +855,7 @@ start_capture(FpDevice *_dev, void *data)
   FpiSsm *ssm;
 
   self->loop_running = TRUE;
-  self->dev_state = FPI_IMAGE_DEVICE_STATE_CAPTURE;
+  //self->dev_state = FPI_IMAGE_DEVICE_STATE_CAPTURE;
   ssm = fpi_ssm_new(FP_DEVICE(dev), capture_run_state, CAPTURE_NUM_STATES);
   fpi_ssm_start(ssm, capture_complete);
 }
@@ -904,9 +904,47 @@ start_report_finger_on(FpDevice *_dev, void *data)
   FpiSsm *ssm;
 
   self->loop_running = TRUE;
-  self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
+  //self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
   ssm = fpi_ssm_new(FP_DEVICE(dev), capture_run_state, CAPTURE_NUM_STATES);
   fpi_ssm_start(ssm, report_finger_on);
+}
+
+static void
+validity_change_state(FpDevice *_dev, void *data)
+{
+  FpImageDevice *dev = FP_IMAGE_DEVICE(_dev);
+  FpDeviceVfs7552 *self;
+  self = FPI_DEVICE_VFS7552(dev);
+  FpiImageDeviceState next_state = self->dev_state_next;
+
+  if (self->dev_state == next_state)
+  {
+    fp_dbg("already in %d", next_state);
+    return;
+  }
+  else
+  {
+    fp_dbg("changing to %d", next_state);
+  }
+
+  switch (next_state)
+  {
+  case FPI_IMAGE_DEVICE_STATE_INACTIVE:
+  case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON:
+    self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
+    start_report_finger_on(_dev, NULL);
+    break;
+
+  case FPI_IMAGE_DEVICE_STATE_CAPTURE:
+    self->dev_state = FPI_IMAGE_DEVICE_STATE_CAPTURE;
+    start_capture(_dev, NULL);
+    break;
+
+  case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF:
+    self->dev_state = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
+    start_report_finger_off(_dev, NULL);
+    break;
+  }
 }
 
 static void
@@ -989,6 +1027,8 @@ dev_deactivate(FpImageDevice *dev)
 static void
 dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
 {
+  FpDeviceVfs7552 *self;
+  self = FPI_DEVICE_VFS7552(dev);
   GSource *timeout;
   char *name;
 
@@ -998,8 +1038,9 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON:
     // schedule state change instead of calling it directly to allow all actions
     // related to the previous state to complete
+    self->dev_state_next = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON;
     timeout = fpi_device_add_timeout(FP_DEVICE(dev), 10,
-                                     start_report_finger_on,
+                                     validity_change_state,
                                      NULL, NULL);
 
     name = g_strdup_printf("dev_change_state to %d", state);
@@ -1011,8 +1052,9 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
   case FPI_IMAGE_DEVICE_STATE_CAPTURE:
     // schedule state change instead of calling it directly to allow all actions
     // related to the previous state to complete
+    self->dev_state_next = FPI_IMAGE_DEVICE_STATE_CAPTURE;
     timeout = fpi_device_add_timeout(FP_DEVICE(dev), 10,
-                                     start_capture,
+                                     validity_change_state,
                                      NULL, NULL);
 
     name = g_strdup_printf("dev_change_state to %d", state);
@@ -1024,8 +1066,9 @@ dev_change_state(FpImageDevice *dev, FpiImageDeviceState state)
   case FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF:
     // schedule state change instead of calling it directly to allow all actions
     // related to the previous state to complete
+    self->dev_state_next = FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF;
     timeout = fpi_device_add_timeout(FP_DEVICE(dev), 10,
-                                     start_report_finger_off,
+                                     validity_change_state,
                                      NULL, NULL);
 
     name = g_strdup_printf("dev_change_state to %d", state);
