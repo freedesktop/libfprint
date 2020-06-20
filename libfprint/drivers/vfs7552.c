@@ -581,12 +581,14 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
         break;
       }
     }
+
+    clean_image(self);
+    variance_after = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
+    fp_dbg("variance_after = %d\n", variance_after);
+
     if (self->dev_state == FPI_IMAGE_DEVICE_STATE_CAPTURE ||
         self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_ON)
     {
-      clean_image(self);
-      variance_after = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
-      fp_dbg("variance_after = %d\n", variance_after);
       // If the finger is placed on the sensor, the variance should ideally increase above a certain
       // threshold. Otherwise request a new image and test again. Additionally we want to ensure
       // that we don't capture prints with a way too high noise level (this sometimes happens).
@@ -599,11 +601,8 @@ capture_run_state(FpiSsm *ssm, FpDevice *_dev)
     }
     else if (self->dev_state == FPI_IMAGE_DEVICE_STATE_AWAIT_FINGER_OFF)
     {
-      clean_image(self);
-      variance_after = fpi_std_sq_dev(self->image, VFS7552_IMAGE_SIZE);
-      fp_dbg("variance_after = %d\n", variance_after);
       // If the finger is removed from the sensor, the variance should ideally drop below a certain
-      // threshold.
+      // threshold. Otherwise request a new image and test again.
       if (variance_after < FINGER_OFF_VARIANCE_THRESHOLD)
         fpi_ssm_mark_completed(ssm); //fpi_ssm_jump_to_state(ssm, CAPTURE_DISABLE_SENSOR);
       else
