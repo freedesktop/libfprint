@@ -29,7 +29,8 @@ G_DEFINE_TYPE (FpiDeviceSynaptics, fpi_device_synaptics, FP_TYPE_DEVICE)
 
 static const FpIdEntry id_table[] = {
   { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0xBD,  },
-
+  { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0xE9,  },
+  { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0xDF,  },
   { .vid = 0,  .pid = 0,  .driver_data = 0 },   /* terminating entry */
 };
 
