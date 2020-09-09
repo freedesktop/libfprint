@@ -72,9 +72,8 @@ typedef enum {
  * fpi_device_action_error() function but doing so is not recommended in most
  * usecases.
  *
- * Drivers *must* also handle cancellation properly for any long running
- * operation (i.e. any operation that requires capturing). It is entirely fine
- * to ignore cancellation requests for short operations (e.g. open/close).
+ * Image drivers must expect a @deactivate call to happen at any point during
+ * image capture.
  *
  * This API is solely intended for drivers. It is purely internal and neither
  * API nor ABI stable.

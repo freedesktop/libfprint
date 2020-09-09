@@ -21,6 +21,7 @@ drivers_tests = [
     'synaptics',
     'vfs0050',
     'vfs5011',
+    'goodixmoc',
 ]
 
 if get_option('introspection')

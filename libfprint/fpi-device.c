@@ -135,6 +135,10 @@ fpi_device_error_new (FpDeviceError error)
       msg = "Print was not found on the devices storage.";
       break;
 
+    case FP_DEVICE_ERROR_DATA_DUPLICATE:
+      msg = "This finger has already enrolled, please try a different finger";
+      break;
+
     default:
       g_warning ("Unsupported error, returning general error instead!");
       error = FP_DEVICE_ERROR_GENERAL;

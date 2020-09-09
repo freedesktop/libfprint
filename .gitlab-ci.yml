@@ -3,6 +3,7 @@ include:
   - project: 'wayland/ci-templates'
     ref: master
     file: '/templates/fedora.yml'
+  - remote: 'https://gitlab.gnome.org/GNOME/citemplates/-/raw/master/flatpak/flatpak_ci_initiative.yml'
 
 variables:
   extends: .libfprint_common_variables
@@ -108,56 +109,34 @@ test_indent:
     - git diff
     - "! git status -s | grep -q ."
 
-.flatpak_script_template: &flatpak_script
-    script:
-        - flatpak-builder --stop-at=${FLATPAK_MODULE} app ${MANIFEST_PATH}
-        # Make sure to keep this in sync with the Flatpak manifest, all arguments
-        # are passed except the config-args because we build it ourselves
-        - flatpak build app meson --prefix=/app --libdir=lib ${MESON_ARGS} _build
-        - flatpak build app ninja -C _build install
-        - flatpak build app rm -rf /app/include/ /app/lib/pkgconfig/
-        - flatpak-builder --finish-only --repo=repo app ${MANIFEST_PATH}
-        # Generate a Flatpak bundle
-        - flatpak build-bundle repo ${BUNDLE} --runtime-repo=${RUNTIME_REPO} ${DBUS_ID}
-
-.flatpak_artifacts_template: &flatpak_artifacts
-    artifacts:
-        paths:
-            - ${BUNDLE}
-        when: always
-        expire_in: 30 days
-
-.flatpak_template: &flatpak
-    <<: *flatpak_script
-    <<: *flatpak_artifacts
-
-.flatpak_master_template: &flatpak_master
-    image: registry.gitlab.gnome.org/gnome/gnome-runtime-images/gnome:3.32
-    stage: flatpak
-    variables:
-        MANIFEST_PATH: "demo/org.freedesktop.libfprint.Demo.json"
-        # From demo/org.freedesktop.libfprint.Demo.json
-        MESON_ARGS: "-Dudev_rules=false -Dx11-examples=false -Dgtk-examples=true"
-        FLATPAK_MODULE: "libfprint"
-        DBUS_ID: "org.freedesktop.libfprint.Demo"
-    <<: *flatpak
+.flatpak-libfprint:
+  stage: flatpak
+  extends: .flatpak
+  image: registry.gitlab.gnome.org/gnome/gnome-runtime-images/gnome:3.36
+  variables:
+    MANIFEST_PATH: "demo/org.freedesktop.libfprint.Demo.json"
+    FLATPAK_MODULE: "libfprint"
+    APP_ID: "org.freedesktop.libfprint.Demo"
 
 flatpak-auto master:
-    <<: *flatpak_master
-    when: always
-    only:
+  extends: .flatpak-libfprint
+  when: always
+  only:
+   - tags
+   - master
+  except:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule"
+
+flatpak-manual:
+  extends: .flatpak-libfprint
+  when: manual
+  except:
+    refs:
       - tags
       - master
-
-flatpak-manual master:
-    <<: *flatpak_master
-    when: manual
-    except:
-      refs:
-        - tags
-        - master
-      variables:
-        - $CI_PIPELINE_SOURCE == "schedule"
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule"
 
 # CONTAINERS creation stage
 container_fedora_build:

@@ -898,6 +898,7 @@ dev_probe (FpDevice *device)
   const guint8 *data;
   gboolean read_ok = TRUE;
   g_autofree gchar *serial = NULL;
+  gboolean retry = TRUE;
 
   G_DEBUG_HERE ();
 
@@ -915,35 +916,43 @@ dev_probe (FpDevice *device)
   if (!g_usb_device_claim_interface (usb_dev, 0, 0, &error))
     goto err_close;
 
-  /* TODO: Do not do this synchronous. */
-  transfer = fpi_usb_transfer_new (device);
-  fpi_usb_transfer_fill_bulk (transfer, USB_EP_REQUEST, SENSOR_FW_CMD_HEADER_LEN);
-  transfer->short_is_error = TRUE;
-  transfer->buffer[0] = SENSOR_CMD_GET_VERSION;
-  if (!fpi_usb_transfer_submit_sync (transfer, 1000, &error))
-    goto err_close;
-
-  g_clear_pointer (&transfer, fpi_usb_transfer_unref);
-  transfer = fpi_usb_transfer_new (device);
-  fpi_usb_transfer_fill_bulk (transfer, USB_EP_REPLY, 40);
-  if (!fpi_usb_transfer_submit_sync (transfer, 1000, &error))
-    goto err_close;
-
-  fpi_byte_reader_init (&reader, transfer->buffer, transfer->actual_length);
-
-  if (!fpi_byte_reader_get_uint16_le (&reader, &status))
+  while(1)
     {
-      g_warning ("Transfer in response to version query was too short");
-      error = fpi_device_error_new (FP_DEVICE_ERROR_PROTO);
-      goto err_close;
-    }
-  if (status != 0)
-    {
-      g_warning ("Device responded with error: %d", status);
-      error = fpi_device_error_new (FP_DEVICE_ERROR_PROTO);
-      goto err_close;
-    }
+      /* TODO: Do not do this synchronous. */
+      transfer = fpi_usb_transfer_new (device);
+      fpi_usb_transfer_fill_bulk (transfer, USB_EP_REQUEST, SENSOR_FW_CMD_HEADER_LEN);
+      transfer->short_is_error = TRUE;
+      transfer->buffer[0] = SENSOR_CMD_GET_VERSION;
+      if (!fpi_usb_transfer_submit_sync (transfer, 1000, &error))
+        goto err_close;
 
+      g_clear_pointer (&transfer, fpi_usb_transfer_unref);
+      transfer = fpi_usb_transfer_new (device);
+      fpi_usb_transfer_fill_bulk (transfer, USB_EP_REPLY, 40);
+      if (!fpi_usb_transfer_submit_sync (transfer, 1000, &error))
+        goto err_close;
+
+      fpi_byte_reader_init (&reader, transfer->buffer, transfer->actual_length);
+
+      if (!fpi_byte_reader_get_uint16_le (&reader, &status))
+        {
+          g_warning ("Transfer in response to version query was too short");
+          error = fpi_device_error_new (FP_DEVICE_ERROR_PROTO);
+          goto err_close;
+        }
+      if (status != 0)
+        {
+          g_warning ("Device responded with error: %d retry: %d", status, retry);
+          if(retry)
+            {
+              retry = FALSE;
+              continue;
+            }
+          error = fpi_device_error_new (FP_DEVICE_ERROR_PROTO);
+          goto err_close;
+        }
+      break;
+    }
   read_ok &= fpi_byte_reader_get_uint32_le (&reader, &self->mis_version.build_time);
   read_ok &= fpi_byte_reader_get_uint32_le (&reader, &self->mis_version.build_num);
   read_ok &= fpi_byte_reader_get_uint8 (&reader, &self->mis_version.version_major);
