@@ -22,7 +22,7 @@ template = FPrint.Print.new(d)
 def enroll_progress(*args):
     print('enroll progress: ' + str(args))
 
-# List, enroll, list, verify, delete
+# List, enroll, list, verify, identify, delete
 print("enrolling")
 p = d.enroll_sync(template, None, enroll_progress, None)
 print("enroll done")
@@ -36,6 +36,10 @@ print("verifying")
 verify_res, verify_print = d.verify_sync(p)
 print("verify done")
 assert verify_res == True
+print("identifying")
+identify_match, identify_print = d.identify_sync(stored)
+print("identify done")
+assert identify_match.equal(identify_print)
 
 print("deleting")
 d.delete_print_sync(p)

@@ -42,8 +42,7 @@
 
 typedef struct
 {
-  FpiUsbTransfer *img_trf;
-  gboolean        deactivating;
+  GCancellable *img_trf_cancel;
 } FpiDeviceAes3kPrivate;
 
 #define CTRL_TIMEOUT 1000
@@ -77,14 +76,11 @@ img_cb (FpiUsbTransfer *transfer, FpDevice *device,
 {
   FpImageDevice *dev = FP_IMAGE_DEVICE (device);
   FpiDeviceAes3k *self = FPI_DEVICE_AES3K (device);
-  FpiDeviceAes3kPrivate *priv = fpi_device_aes3k_get_instance_private (self);
   FpiDeviceAes3kClass *cls = FPI_DEVICE_AES3K_GET_CLASS (self);
   unsigned char *ptr = transfer->buffer;
   FpImage *tmp;
   FpImage *img;
   int i;
-
-  priv->img_trf = NULL;
 
   if (error)
     {
@@ -92,10 +88,9 @@ img_cb (FpiUsbTransfer *transfer, FpDevice *device,
                            G_IO_ERROR,
                            G_IO_ERROR_CANCELLED))
         {
-          /* Deactivation was completed. */
+          /* Cancellation implies we are deactivating. */
           g_error_free (error);
-          if (priv->deactivating)
-            fpi_image_device_deactivate_complete (dev, NULL);
+          fpi_image_device_deactivate_complete (dev, NULL);
           return;
         }
 
@@ -126,21 +121,23 @@ img_cb (FpiUsbTransfer *transfer, FpDevice *device,
    * it really has, then restart the capture */
   fpi_image_device_report_finger_status (dev, FALSE);
 
+  /* Note: We always restart the transfer, it may already be cancelled though. */
   do_capture (dev);
 }
 
 static void
 do_capture (FpImageDevice *dev)
 {
+  g_autoptr(FpiUsbTransfer) img_trf = NULL;
   FpiDeviceAes3k *self = FPI_DEVICE_AES3K (dev);
   FpiDeviceAes3kPrivate *priv = fpi_device_aes3k_get_instance_private (self);
   FpiDeviceAes3kClass *cls = FPI_DEVICE_AES3K_GET_CLASS (self);
 
-  priv->img_trf = fpi_usb_transfer_new (FP_DEVICE (dev));
-  fpi_usb_transfer_fill_bulk (priv->img_trf, EP_IN, cls->data_buflen);
-  priv->img_trf->short_is_error = TRUE;
-  fpi_usb_transfer_submit (priv->img_trf, 0,
-                           fpi_device_get_cancellable (FP_DEVICE (dev)),
+  img_trf = fpi_usb_transfer_new (FP_DEVICE (dev));
+  fpi_usb_transfer_fill_bulk (img_trf, EP_IN, cls->data_buflen);
+  img_trf->short_is_error = TRUE;
+  fpi_usb_transfer_submit (g_steal_pointer (&img_trf), 0,
+                           priv->img_trf_cancel,
                            img_cb, NULL);
 }
 
@@ -159,7 +156,8 @@ aes3k_dev_activate (FpImageDevice *dev)
   FpiDeviceAes3kPrivate *priv = fpi_device_aes3k_get_instance_private (self);
   FpiDeviceAes3kClass *cls = FPI_DEVICE_AES3K_GET_CLASS (self);
 
-  priv->deactivating = FALSE;
+  g_assert (!priv->img_trf_cancel);
+  priv->img_trf_cancel = g_cancellable_new ();
   aes_write_regv (dev, cls->init_reqs, cls->init_reqs_len, init_reqs_cb, NULL);
 }
 
@@ -169,10 +167,8 @@ aes3k_dev_deactivate (FpImageDevice *dev)
   FpiDeviceAes3k *self = FPI_DEVICE_AES3K (dev);
   FpiDeviceAes3kPrivate *priv = fpi_device_aes3k_get_instance_private (self);
 
-  priv->deactivating = TRUE;
-  if (priv->img_trf)
-    return;
-  fpi_image_device_deactivate_complete (dev, NULL);
+  /* Deactivation always finishes from the cancellation handler */
+  g_cancellable_cancel (priv->img_trf_cancel);
 }
 
 static void

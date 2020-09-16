@@ -72,6 +72,12 @@ typedef struct
   SynCmdMsgCallback callback;
 } CommandData;
 
+static gboolean parse_print_data (GVariant      *data,
+                                  guint8        *finger,
+                                  const guint8 **tid,
+                                  gsize         *tid_len,
+                                  const guint8 **user_id,
+                                  gsize         *user_id_len);
 /******************************************************************************
  *
  *  fp_cmd_xxx Function
@@ -340,30 +346,74 @@ fp_verify_capture_cb (FpiDeviceGoodixMoc  *self,
 }
 
 static void
-fp_verify_identify_cb (FpiDeviceGoodixMoc  *self,
-                       gxfp_cmd_response_t *resp,
-                       GError              *error)
+fp_verify_cb (FpiDeviceGoodixMoc  *self,
+              gxfp_cmd_response_t *resp,
+              GError              *error)
 {
   FpDevice *device = FP_DEVICE (self);
+  FpPrint *print = NULL;
+  GPtrArray *templates = NULL;
+  gint cnt = 0;
+  gboolean find = false;
 
   if (error)
     {
       fpi_ssm_mark_failed (self->task_ssm, error);
       return;
     }
-  if (!resp->verify.match)
+  if (resp->verify.match)
     {
-      fpi_device_verify_report (device, FPI_MATCH_FAIL, NULL, error);
+      if (fpi_device_get_current_action (device) == FPI_DEVICE_ACTION_VERIFY)
+        {
+
+          templates = g_ptr_array_new_with_free_func (g_object_unref);
+          fpi_device_get_verify_data (device, &print);
+          g_ptr_array_add (templates, g_object_ref_sink (print));
+
+        }
+      else
+        {
+          fpi_device_get_identify_data (device, &templates);
+        }
+      for (cnt = 0; cnt < templates->len; cnt++)
+        {
+          g_autoptr(GVariant) data = NULL;
+          guint8 finger;
+          const guint8 *user_id;
+          gsize user_id_len = 0;
+          const guint8 *tid;
+          gsize tid_len = 0;
+          print = g_ptr_array_index (templates, cnt);
+          g_object_get (print, "fpi-data", &data, NULL);
+          if (!parse_print_data (data, &finger, &tid, &tid_len, &user_id, &user_id_len))
+            {
+              fpi_ssm_mark_failed (self->task_ssm,
+                                   fpi_device_error_new_msg (FP_DEVICE_ERROR_DATA_INVALID,
+                                                             "Parse print error"));
+              return;
+            }
+          if (memcmp (&resp->verify.template.tid, tid, TEMPLATE_ID_SIZE) == 0)
+            {
+              find = true;
+              break;
+            }
+
+        }
+      if (find)
+        {
+          if (fpi_device_get_current_action (device) == FPI_DEVICE_ACTION_VERIFY)
+            fpi_device_verify_report (device, FPI_MATCH_SUCCESS, NULL, error);
+          else
+            fpi_device_identify_report (device, print, print, error);
+        }
     }
-  else if (memcmp (&resp->verify.template.tid, &self->template_id, TEMPLATE_ID_SIZE) != 0)
+
+  if (!find)
     {
-      fpi_device_verify_report (device, FPI_MATCH_FAIL, NULL, error);
-    }
-  else
-    {
-      fp_info ("Verify successful! for user: %s finger: %d",
-               resp->verify.template.payload.data, resp->verify.template.finger_index);
-      fpi_device_verify_report (device, FPI_MATCH_SUCCESS, NULL, NULL);
+      if (fpi_device_get_current_action (device) == FPI_DEVICE_ACTION_VERIFY)
+        fpi_device_verify_report (device, FPI_MATCH_FAIL, NULL, error);
+      else
+        fpi_device_identify_report (device, NULL, NULL, error);
     }
 
   fpi_ssm_mark_completed (self->task_ssm);
@@ -375,6 +425,7 @@ fp_verify_sm_run_state (FpiSsm *ssm, FpDevice *device)
 {
   FpiDeviceGoodixMoc *self = FPI_DEVICE_GOODIXMOC (device);
   guint8 param[3] = { 0 };
+  guint8 nonce[TEMPLATE_ID_SIZE] = { 0 };
 
   param[0] = 0x01;
   param[1] = self->sensorcfg->config[10];
@@ -393,9 +444,9 @@ fp_verify_sm_run_state (FpiSsm *ssm, FpDevice *device)
     case FP_VERIFY_IDENTIFY:
       goodix_sensor_cmd (self, MOC_CMD0_IDENTIFY, MOC_CMD1_DEFAULT,
                          false,
-                         (const guint8 *) &self->template_id,
+                         (const guint8 *) nonce,
                          TEMPLATE_ID_SIZE,
-                         fp_verify_identify_cb);
+                         fp_verify_cb);
       break;
     }
 
@@ -409,9 +460,18 @@ fp_verify_ssm_done (FpiSsm *ssm, FpDevice *dev, GError *error)
   fp_info ("Verify complete!");
 
   if (error && error->domain == FP_DEVICE_RETRY)
-    fpi_device_verify_report (dev, FPI_MATCH_ERROR, NULL, error);
+    {
+      if (fpi_device_get_current_action (dev) == FPI_DEVICE_ACTION_VERIFY)
+        fpi_device_verify_report (dev, FPI_MATCH_ERROR, NULL, error);
+      else
+        fpi_device_identify_report (dev, NULL, NULL, error);
+    }
 
-  fpi_device_verify_complete (dev, error);
+  if (fpi_device_get_current_action (dev) == FPI_DEVICE_ACTION_VERIFY)
+    fpi_device_verify_complete (dev, error);
+
+  else
+    fpi_device_identify_complete (dev, error);
 
   self->task_ssm = NULL;
 }
@@ -879,7 +939,8 @@ fp_init_version_cb (FpiDeviceGoodixMoc  *self,
                     gxfp_cmd_response_t *resp,
                     GError              *error)
 {
-  char nullstring[GX_VERSION_LEN + 1] = { 0 };
+  g_autofree gchar *fw_type = NULL;
+  g_autofree gchar *fw_version = NULL;
 
   if (error)
     {
@@ -888,16 +949,20 @@ fp_init_version_cb (FpiDeviceGoodixMoc  *self,
     }
 
   G_STATIC_ASSERT (sizeof (resp->version_info.fwtype) == 8);
-  G_STATIC_ASSERT (sizeof (resp->version_info.algversion) == 8);
   G_STATIC_ASSERT (sizeof (resp->version_info.fwversion) == 8);
 
-  memcpy (nullstring, resp->version_info.fwtype, sizeof (resp->version_info.fwtype));
-  fp_info ("Firmware type: %s", nullstring);
-  memcpy (nullstring, resp->version_info.algversion, sizeof (resp->version_info.algversion));
-  fp_info ("Algversion version: %s", nullstring);
-  memcpy (nullstring, resp->version_info.fwversion, sizeof (resp->version_info.fwversion));
-  fp_info ("Firmware version: %s", nullstring);
+  fw_type = g_strndup ((const char *) resp->version_info.fwtype, sizeof (resp->version_info.fwtype));
 
+  fp_info ("Firmware type: %s", fw_type);
+  if (g_strcmp0 (fw_type, "APP") != 0)
+    {
+      fpi_ssm_mark_failed (self->task_ssm,
+                           fpi_device_error_new_msg (FP_DEVICE_ERROR_NOT_SUPPORTED,
+                                                     "Please update firmware using fwupd"));
+      return;
+    }
+  fw_version = g_strndup ((const char *) resp->version_info.fwversion, sizeof (resp->version_info.fwversion));
+  fp_info ("Firmware version: %s", fw_version);
   fpi_ssm_next_state (self->task_ssm);
 }
 
@@ -1247,30 +1312,9 @@ gx_fp_exit (FpDevice *device)
 
 
 static void
-gx_fp_verify (FpDevice *device)
+gx_fp_verify_identify (FpDevice *device)
 {
-
   FpiDeviceGoodixMoc *self = FPI_DEVICE_GOODIXMOC (device);
-  FpPrint *print = NULL;
-
-  g_autoptr(GVariant) data = NULL;
-  guint8 finger;
-  const guint8 *user_id;
-  gsize user_id_len = 0;
-  const guint8 *tid;
-  gsize tid_len = 0;
-
-  fpi_device_get_verify_data (device, &print);
-
-  g_object_get (print, "fpi-data", &data, NULL);
-
-  if (!parse_print_data (data, &finger, &tid, &tid_len, &user_id, &user_id_len))
-    {
-      fpi_device_verify_complete (device,
-                                  fpi_device_error_new (FP_DEVICE_ERROR_DATA_INVALID));
-      return;
-    }
-  memcpy (&self->template_id, tid, tid_len);
 
   self->task_ssm = fpi_ssm_new (device, fp_verify_sm_run_state,
                                 FP_VERIFY_NUM_STATES);
@@ -1400,9 +1444,10 @@ fpi_device_goodixmoc_class_init (FpiDeviceGoodixMocClass *klass)
   dev_class->open   = gx_fp_init;
   dev_class->close  = gx_fp_exit;
   dev_class->probe  = gx_fp_probe;
-  dev_class->verify = gx_fp_verify;
   dev_class->enroll = gx_fp_enroll;
   dev_class->delete = gx_fp_template_delete;
   dev_class->list   = gx_fp_template_list;
   dev_class->cancel = gx_fp_cancel;
+  dev_class->verify   = gx_fp_verify_identify;
+  dev_class->identify = gx_fp_verify_identify;
 }

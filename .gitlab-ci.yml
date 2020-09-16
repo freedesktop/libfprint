@@ -109,7 +109,7 @@ test_indent:
     - git diff
     - "! git status -s | grep -q ."
 
-.flatpak-libfprint:
+flatpak:
   stage: flatpak
   extends: .flatpak
   image: registry.gitlab.gnome.org/gnome/gnome-runtime-images/gnome:3.36
@@ -117,26 +117,20 @@ test_indent:
     MANIFEST_PATH: "demo/org.freedesktop.libfprint.Demo.json"
     FLATPAK_MODULE: "libfprint"
     APP_ID: "org.freedesktop.libfprint.Demo"
-
-flatpak-auto master:
-  extends: .flatpak-libfprint
-  when: always
-  only:
-   - tags
-   - master
-  except:
-    variables:
-      - $CI_PIPELINE_SOURCE == "schedule"
-
-flatpak-manual:
-  extends: .flatpak-libfprint
-  when: manual
-  except:
-    refs:
-      - tags
-      - master
-    variables:
-      - $CI_PIPELINE_SOURCE == "schedule"
+  rules:
+    - if: '$CI_PROJECT_PATH != "libfprint/libfprint"'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: always
+    - if: '$CI_COMMIT_TAG'
+      when: always
+    # For any other (commit), allow manual run.
+    # This excludes MRs which would create a duplicate pipeline
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: true
 
 # CONTAINERS creation stage
 container_fedora_build:

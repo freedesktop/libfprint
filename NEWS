@@ -1,6 +1,25 @@
 This file lists notable changes in each release. For the full history of all
 changes, see ChangeLog.
 
+2020-06-08: v1.90.3 release
+
+This release mostly contains support for a number of new match-on-chip
+devices. Most notable is the addition of the new goodixmoc driver.
+Currently the driver has the small caveat that we have no strategy to
+garbage collect old prints yet (a simple strategy could be implemented
+in fprintd).
+
+Highlights:
+ * New goodixmoc driver supporting Goodix USB devices:
+   27C6:5840
+   27C6:6496
+   27C6:60A2
+ * Newly added support for Synaptics device:
+   06CB:00E9
+   06CB:00DF
+ * Fixed an issue with Synaptics devices sometimes not working at boot
+ * Fix issue with aes3k driver (#306)
+
 2020-06-08: v1.90.2 release
 
 This release contains a large amount of bug and regression fixes. These
