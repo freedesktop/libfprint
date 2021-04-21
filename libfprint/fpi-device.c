@@ -1805,6 +1805,21 @@ fpi_device_update_temp (FpDevice *device, gboolean is_active)
   if (priv->temp_current != old_temp)
     g_object_notify (G_OBJECT (device), "temperature");
 
+  /* If the device is HOT, then do an internal cancellation of long running tasks. */
+  if (priv->temp_current == FP_TEMPERATURE_HOT)
+    {
+      if (priv->current_action == FPI_DEVICE_ACTION_ENROLL ||
+          priv->current_action == FPI_DEVICE_ACTION_VERIFY ||
+          priv->current_action == FPI_DEVICE_ACTION_IDENTIFY ||
+          priv->current_action == FPI_DEVICE_ACTION_CAPTURE)
+        {
+          if (!priv->current_cancellation_reason)
+            priv->current_cancellation_reason = fpi_device_error_new (FP_DEVICE_ERROR_TOO_HOT);
+
+          g_cancellable_cancel (priv->current_cancellable);
+        }
+    }
+
   g_clear_pointer (&priv->temp_timeout, g_source_destroy);
 
   if (next_threshold < 0)

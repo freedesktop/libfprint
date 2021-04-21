@@ -962,6 +962,14 @@ fp_device_enroll (FpDevice           *device,
       return;
     }
 
+  fpi_device_update_temp (device, TRUE);
+  if (priv->temp_current == FP_TEMPERATURE_HOT)
+    {
+      g_task_return_error (task, fpi_device_error_new (FP_DEVICE_ERROR_TOO_HOT));
+      fpi_device_update_temp (device, FALSE);
+      return;
+    }
+
   priv->current_action = FPI_DEVICE_ACTION_ENROLL;
   priv->current_task = g_steal_pointer (&task);
   setup_task_cancellable (device);
@@ -1052,6 +1060,14 @@ fp_device_verify (FpDevice           *device,
       g_task_return_error (task,
                            fpi_device_error_new_msg (FP_DEVICE_ERROR_NOT_SUPPORTED,
                                                      "Device has no verification support"));
+      return;
+    }
+
+  fpi_device_update_temp (device, TRUE);
+  if (priv->temp_current == FP_TEMPERATURE_HOT)
+    {
+      g_task_return_error (task, fpi_device_error_new (FP_DEVICE_ERROR_TOO_HOT));
+      fpi_device_update_temp (device, FALSE);
       return;
     }
 
@@ -1174,6 +1190,14 @@ fp_device_identify (FpDevice           *device,
       return;
     }
 
+  fpi_device_update_temp (device, TRUE);
+  if (priv->temp_current == FP_TEMPERATURE_HOT)
+    {
+      g_task_return_error (task, fpi_device_error_new (FP_DEVICE_ERROR_TOO_HOT));
+      fpi_device_update_temp (device, FALSE);
+      return;
+    }
+
   priv->current_action = FPI_DEVICE_ACTION_IDENTIFY;
   priv->current_task = g_steal_pointer (&task);
   setup_task_cancellable (device);
@@ -1288,6 +1312,14 @@ fp_device_capture (FpDevice           *device,
       g_task_return_error (task,
                            fpi_device_error_new_msg (FP_DEVICE_ERROR_NOT_SUPPORTED,
                                                      "Device has no verification support"));
+      return;
+    }
+
+  fpi_device_update_temp (device, TRUE);
+  if (priv->temp_current == FP_TEMPERATURE_HOT)
+    {
+      g_task_return_error (task, fpi_device_error_new (FP_DEVICE_ERROR_TOO_HOT));
+      fpi_device_update_temp (device, FALSE);
       return;
     }
 
