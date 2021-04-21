@@ -64,8 +64,11 @@ typedef struct
   /* We always make sure that only one task is run at a time. */
   FpiDeviceAction     current_action;
   GTask              *current_task;
+  GError             *current_cancellation_reason;
   GAsyncReadyCallback current_user_cb;
+  GCancellable       *current_cancellable;
   gulong              current_cancellable_id;
+  gulong              current_task_cancellable_id;
   GSource            *current_idle_cancel_source;
   GSource            *current_task_idle_return_source;
 

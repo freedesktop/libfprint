@@ -2350,32 +2350,32 @@ test_driver_action_get_cancellable_open (void)
 }
 
 static void
-test_driver_action_get_cancellable_open_fail_vfunc (FpDevice *device)
+test_driver_action_get_cancellable_open_internal_vfunc (FpDevice *device)
 {
   FpiDeviceFake *fake_dev = FPI_DEVICE_FAKE (device);
 
   g_assert_cmpuint (fpi_device_get_current_action (device), ==, FPI_DEVICE_ACTION_OPEN);
-  fake_dev->last_called_function = test_driver_action_get_cancellable_open_fail_vfunc;
+  fake_dev->last_called_function = test_driver_action_get_cancellable_open_internal_vfunc;
 
-  g_assert_false (G_IS_CANCELLABLE (fpi_device_get_cancellable (device)));
+  g_assert_true (G_IS_CANCELLABLE (fpi_device_get_cancellable (device)));
 
   fpi_device_open_complete (device, NULL);
 }
 
 static void
-test_driver_action_get_cancellable_open_fail (void)
+test_driver_action_get_cancellable_open_internal (void)
 {
   g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
   g_autoptr(FpAutoCloseDevice) device = NULL;
   FpiDeviceFake *fake_dev;
 
-  dev_class->open = test_driver_action_get_cancellable_open_fail_vfunc;
+  dev_class->open = test_driver_action_get_cancellable_open_internal_vfunc;
   device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
   fake_dev = FPI_DEVICE_FAKE (device);
 
   g_assert_true (fp_device_open_sync (device, NULL, NULL));
 
-  g_assert (fake_dev->last_called_function == test_driver_action_get_cancellable_open_fail_vfunc);
+  g_assert (fake_dev->last_called_function == test_driver_action_get_cancellable_open_internal_vfunc);
 }
 
 static void
@@ -2400,7 +2400,11 @@ test_driver_action_is_cancelled_open_vfunc (FpDevice *device)
   g_assert_true (G_IS_CANCELLABLE (fpi_device_get_cancellable (device)));
   g_assert_false (fpi_device_action_is_cancelled (device));
 
-  g_cancellable_cancel (fpi_device_get_cancellable (device));
+  if (fake_dev->ext_cancellable)
+    g_cancellable_cancel (fake_dev->ext_cancellable);
+  else
+    g_cancellable_cancel (fpi_device_get_cancellable (device));
+
   g_assert_true (fpi_device_action_is_cancelled (device));
 
   fpi_device_open_complete (device, NULL);
@@ -2419,9 +2423,30 @@ test_driver_action_is_cancelled_open (void)
   device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
   fake_dev = FPI_DEVICE_FAKE (device);
 
-  cancellable = g_cancellable_new ();
+  cancellable = fake_dev->ext_cancellable = g_cancellable_new ();
   g_assert_false (fp_device_open_sync (device, cancellable, &error));
   g_assert_error (error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
+
+  g_assert (fake_dev->last_called_function == test_driver_action_is_cancelled_open_vfunc);
+}
+
+static void
+test_driver_action_internally_cancelled_open (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(GCancellable) cancellable = NULL;
+  g_autoptr(GError) error = NULL;
+  FpiDeviceFake *fake_dev;
+
+  dev_class->open = test_driver_action_is_cancelled_open_vfunc;
+  device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  fake_dev = FPI_DEVICE_FAKE (device);
+
+  /* No error, just some internal cancellation but we let nothing happen externally. */
+  cancellable = g_cancellable_new ();
+  g_assert_true (fp_device_open_sync (device, cancellable, &error));
+  g_assert_null (error);
 
   g_assert (fake_dev->last_called_function == test_driver_action_is_cancelled_open_vfunc);
 }
@@ -2891,8 +2916,9 @@ main (int argc, char *argv[])
   g_test_add_func ("/driver/get_current_action/open", test_driver_current_action_open);
   g_test_add_func ("/driver/get_cancellable/error", test_driver_action_get_cancellable_error);
   g_test_add_func ("/driver/get_cancellable/open", test_driver_action_get_cancellable_open);
-  g_test_add_func ("/driver/get_cancellable/open/fail", test_driver_action_get_cancellable_open_fail);
+  g_test_add_func ("/driver/get_cancellable/open/internal", test_driver_action_get_cancellable_open_internal);
   g_test_add_func ("/driver/action_is_cancelled/open", test_driver_action_is_cancelled_open);
+  g_test_add_func ("/driver/action_is_cancelled/open/internal", test_driver_action_internally_cancelled_open);
   g_test_add_func ("/driver/action_is_cancelled/error", test_driver_action_is_cancelled_error);
   g_test_add_func ("/driver/complete_action/all/error", test_driver_complete_actions_errors);
   g_test_add_func ("/driver/action_error/error", test_driver_action_error_error);

@@ -490,14 +490,11 @@ gboolean
 fpi_device_action_is_cancelled (FpDevice *device)
 {
   FpDevicePrivate *priv = fp_device_get_instance_private (device);
-  GCancellable *cancellable;
 
   g_return_val_if_fail (FP_IS_DEVICE (device), TRUE);
   g_return_val_if_fail (priv->current_action != FPI_DEVICE_ACTION_NONE, TRUE);
 
-  cancellable = g_task_get_cancellable (priv->current_task);
-
-  return g_cancellable_is_cancelled (cancellable);
+  return g_cancellable_is_cancelled (priv->current_cancellable);
 }
 
 /**
@@ -675,7 +672,7 @@ fpi_device_get_cancellable (FpDevice *device)
   g_return_val_if_fail (FP_IS_DEVICE (device), NULL);
   g_return_val_if_fail (priv->current_action != FPI_DEVICE_ACTION_NONE, NULL);
 
-  return g_task_get_cancellable (priv->current_task);
+  return priv->current_cancellable;
 }
 
 static void
@@ -813,9 +810,16 @@ clear_device_cancel_action (FpDevice *device)
 
   if (priv->current_cancellable_id)
     {
-      g_cancellable_disconnect (g_task_get_cancellable (priv->current_task),
+      g_cancellable_disconnect (priv->current_cancellable,
                                 priv->current_cancellable_id);
       priv->current_cancellable_id = 0;
+    }
+
+  if (priv->current_task_cancellable_id)
+    {
+      g_cancellable_disconnect (g_task_get_cancellable (priv->current_task),
+                                priv->current_task_cancellable_id);
+      priv->current_task_cancellable_id = 0;
     }
 }
 
@@ -843,6 +847,7 @@ fp_device_task_return_in_idle_cb (gpointer user_data)
   FpiDeviceAction action;
 
   g_autoptr(GTask) task = NULL;
+  g_autoptr(GError) cancellation_reason = NULL;
 
 
   action_str = g_enum_to_string (FPI_TYPE_DEVICE_ACTION, priv->current_action);
@@ -852,6 +857,8 @@ fp_device_task_return_in_idle_cb (gpointer user_data)
   action = priv->current_action;
   priv->current_action = FPI_DEVICE_ACTION_NONE;
   priv->current_task_idle_return_source = NULL;
+  g_clear_object (&priv->current_cancellable);
+  cancellation_reason = g_steal_pointer (&priv->current_cancellation_reason);
 
   fpi_device_update_temp (data->device, FALSE);
 
@@ -870,6 +877,8 @@ fp_device_task_return_in_idle_cb (gpointer user_data)
       g_object_notify (G_OBJECT (data->device), "open");
     }
 
+  /* TODO: Port/use the cancellation mechanism for device removal! */
+
   /* Return FP_DEVICE_ERROR_REMOVED if the device is removed,
    * with the exception of a successful open, which is an odd corner case. */
   if (priv->is_removed &&
@@ -880,6 +889,15 @@ fp_device_task_return_in_idle_cb (gpointer user_data)
 
       /* NOTE: The removed signal will be emitted from the GTask
        *       notify::completed if that is necessary. */
+
+      return G_SOURCE_REMOVE;
+    }
+
+  /* Return internal cancellation reason if we have one.
+   * Note that an external cancellation always returns G_IO_ERROR_CANCELLED */
+  if (cancellation_reason)
+    {
+      g_task_return_error (task, g_steal_pointer (&cancellation_reason));
 
       return G_SOURCE_REMOVE;
     }

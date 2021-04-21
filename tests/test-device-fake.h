@@ -32,6 +32,8 @@ struct _FpiDeviceFake
   gpointer        last_called_function;
   gboolean        return_action_error;
 
+  GCancellable   *ext_cancellable;
+
   GError         *ret_error;
   FpPrint        *ret_print;
   FpPrint        *ret_match;
