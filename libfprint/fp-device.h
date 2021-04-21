@@ -82,6 +82,23 @@ typedef enum {
 } FpScanType;
 
 /**
+ * FpTemperature:
+ * @FP_TEMPERATURE_COLD: Sensor is considered cold.
+ * @FP_TEMPERATURE_WARM: Sensor is warm, usage time may be limited.
+ * @FP_TEMPERATURE_HOT: Sensor is hot and cannot be used.
+ *
+ * When a device is created, it is assumed to be cold. Applications such as
+ * fprintd may want to ensure all devices on the system are cold before
+ * shutting down in order to ensure that the cool-off period is not violated
+ * because the internal libfprint state about the device is lost.
+ */
+typedef enum {
+  FP_TEMPERATURE_COLD,
+  FP_TEMPERATURE_WARM,
+  FP_TEMPERATURE_HOT,
+} FpTemperature;
+
+/**
  * FpDeviceRetry:
  * @FP_DEVICE_RETRY_GENERAL: The scan did not succeed due to poor scan quality
  *   or other general user scanning problem.

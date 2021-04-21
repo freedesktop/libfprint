@@ -1565,6 +1565,7 @@ fpi_device_goodixmoc_class_init (FpiDeviceGoodixMocClass *klass)
   dev_class->scan_type = FP_SCAN_TYPE_PRESS;
   dev_class->id_table = id_table;
   dev_class->nr_enroll_stages = DEFAULT_ENROLL_SAMPLES;
+  dev_class->temp_hot_seconds = -1;
 
   dev_class->open   = gx_fp_init;
   dev_class->close  = gx_fp_exit;

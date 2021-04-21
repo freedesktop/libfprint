@@ -82,6 +82,10 @@ struct _FpIdEntry
  *   fpi_device_set_nr_enroll_stages() from @probe if this is dynamic.
  * @scan_type: The scan type of supported devices; use
  *   fpi_device_set_scan_type() from @probe if this is dynamic.
+ * @temp_hot_seconds: Assumed time in minutes for the device to become too hot
+ *   after being mostly cold.
+ * @temp_cold_seconds: Assumed time in minutes for the device to be mostly cold
+ *   after having been too hot to operate.
  * @usb_discover: Class method to check whether a USB device is supported by
  *  the driver. Should return 0 if the device is unsupported and a positive
  *  score otherwise. The default score is 50 and the driver with the highest
@@ -141,6 +145,10 @@ struct _FpDeviceClass
   /* Defaults for device properties */
   gint       nr_enroll_stages;
   FpScanType scan_type;
+
+  /* Simple device temperature model constants */
+  gint32 temp_hot_seconds;
+  gint32 temp_cold_seconds;
 
   /* Callbacks */
   gint (*usb_discover) (GUsbDevice *usb_device);

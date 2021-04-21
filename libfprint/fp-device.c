@@ -48,6 +48,7 @@ enum {
   PROP_NR_ENROLL_STAGES,
   PROP_SCAN_TYPE,
   PROP_FINGER_STATUS,
+  PROP_TEMPERATURE,
   PROP_FPI_ENVIRON,
   PROP_FPI_USB_DEVICE,
   PROP_FPI_UDEV_DATA_SPIDEV,
@@ -151,6 +152,36 @@ fp_device_constructed (GObject *object)
   priv->device_name = g_strdup (cls->full_name);
   priv->device_id = g_strdup ("0");
 
+  if (cls->temp_hot_seconds > 0)
+    {
+      priv->temp_hot_seconds = cls->temp_hot_seconds;
+      priv->temp_cold_seconds = cls->temp_cold_seconds;
+      g_assert (priv->temp_cold_seconds > 0);
+    }
+  else if (cls->temp_hot_seconds == 0)
+    {
+      priv->temp_hot_seconds = DEFAULT_TEMP_HOT_SECONDS;
+      priv->temp_cold_seconds = DEFAULT_TEMP_COLD_SECONDS;
+    }
+  else
+    {
+      /* Temperature management disabled */
+      priv->temp_hot_seconds = -1;
+      priv->temp_cold_seconds = -1;
+    }
+
+  /* Start out at not completely cold (i.e. assume we are only at the upper
+   * bound of COLD).
+   * To be fair, the warm-up from 0 to WARM should be really short either way.
+   *
+   * Note that a call to fpi_device_update_temp() is not needed here as no
+   * timeout must be registered.
+   */
+  priv->temp_current = FP_TEMPERATURE_COLD;
+  priv->temp_current_ratio = TEMP_COLD_THRESH;
+  priv->temp_last_update = g_get_monotonic_time ();
+  priv->temp_last_active = FALSE;
+
   G_OBJECT_CLASS (fp_device_parent_class)->constructed (object);
 }
 
@@ -164,6 +195,8 @@ fp_device_finalize (GObject *object)
   g_assert (priv->current_task == NULL);
   if (priv->is_open)
     g_warning ("User destroyed open device! Not cleaning up properly!");
+
+  g_clear_pointer (&priv->temp_timeout, g_source_destroy);
 
   g_slist_free_full (priv->sources, (GDestroyNotify) g_source_destroy);
 
@@ -202,6 +235,10 @@ fp_device_get_property (GObject    *object,
 
     case PROP_FINGER_STATUS:
       g_value_set_flags (value, priv->finger_status);
+      break;
+
+    case PROP_TEMPERATURE:
+      g_value_set_enum (value, priv->temp_current);
       break;
 
     case PROP_DRIVER:
@@ -357,6 +394,13 @@ fp_device_class_init (FpDeviceClass *klass)
                         "The status of the finger",
                         FP_TYPE_FINGER_STATUS_FLAGS, FP_FINGER_STATUS_NONE,
                         G_PARAM_STATIC_STRINGS | G_PARAM_READABLE);
+
+  properties[PROP_TEMPERATURE] =
+    g_param_spec_enum ("temperature",
+                       "Temperature",
+                       "The temperature estimation for device to prevent overheating.",
+                       FP_TYPE_TEMPERATURE, FP_TEMPERATURE_COLD,
+                       G_PARAM_STATIC_STRINGS | G_PARAM_READABLE);
 
   properties[PROP_DRIVER] =
     g_param_spec_string ("driver",
@@ -902,6 +946,8 @@ fp_device_enroll (FpDevice           *device,
   priv->current_task = g_steal_pointer (&task);
   maybe_cancel_on_cancelled (device, cancellable);
 
+  fpi_device_update_temp (device, TRUE);
+
   data = g_new0 (FpEnrollData, 1);
   data->print = g_object_ref_sink (template_print);
   data->enroll_progress_cb = progress_cb;
@@ -994,6 +1040,8 @@ fp_device_verify (FpDevice           *device,
   priv->current_action = FPI_DEVICE_ACTION_VERIFY;
   priv->current_task = g_steal_pointer (&task);
   maybe_cancel_on_cancelled (device, cancellable);
+
+  fpi_device_update_temp (device, TRUE);
 
   data = g_new0 (FpMatchData, 1);
   data->enrolled_print = g_object_ref (enrolled_print);
@@ -1114,6 +1162,8 @@ fp_device_identify (FpDevice           *device,
   priv->current_task = g_steal_pointer (&task);
   maybe_cancel_on_cancelled (device, cancellable);
 
+  fpi_device_update_temp (device, TRUE);
+
   data = g_new0 (FpMatchData, 1);
   /* We cannot store the gallery directly, because the ptr array may not own
    * a reference to each print. Also, the caller could in principle modify the
@@ -1230,6 +1280,8 @@ fp_device_capture (FpDevice           *device,
   priv->current_action = FPI_DEVICE_ACTION_CAPTURE;
   priv->current_task = g_steal_pointer (&task);
   maybe_cancel_on_cancelled (device, cancellable);
+
+  fpi_device_update_temp (device, TRUE);
 
   priv->wait_for_finger = wait_for_finger;
 

@@ -19,6 +19,8 @@
  */
 
 #define FP_COMPONENT "device"
+#include <math.h>
+
 #include "fpi-log.h"
 
 #include "fp-device-private.h"
@@ -850,6 +852,8 @@ fp_device_task_return_in_idle_cb (gpointer user_data)
   action = priv->current_action;
   priv->current_action = FPI_DEVICE_ACTION_NONE;
   priv->current_task_idle_return_source = NULL;
+
+  fpi_device_update_temp (data->device, FALSE);
 
   if (action == FPI_DEVICE_ACTION_OPEN &&
       data->type != FP_DEVICE_TASK_RETURN_ERROR)
@@ -1684,4 +1688,116 @@ fpi_device_report_finger_status_changes (FpDevice           *device,
   finger_status &= ~removed_status;
 
   return fpi_device_report_finger_status (device, finger_status);
+}
+
+static void
+update_temp_timeout (FpDevice *device, gpointer user_data)
+{
+  FpDevicePrivate *priv = fp_device_get_instance_private (device);
+
+  fpi_device_update_temp (device, priv->temp_last_active);
+}
+
+/**
+ * fpi_device_update_temp:
+ * @device: The #FpDevice
+ * @is_active: Whether the device is now active
+ * @next_change: Return for the time in microseconds before the next change
+ *   will occur.
+ *
+ * Purely internal function to update the temperature. Also ensure that the
+ * state is updated once a threshold is reached.
+ */
+void
+fpi_device_update_temp (FpDevice *device, gboolean is_active)
+{
+  FpDevicePrivate *priv = fp_device_get_instance_private (device);
+  gint64 now = g_get_monotonic_time ();
+  gdouble passed_seconds;
+  gdouble alpha;
+  gdouble next_threshold;
+  gdouble old_ratio;
+  FpTemperature old_temp;
+  g_autofree char *old_temp_str = NULL;
+  g_autofree char *new_temp_str = NULL;
+
+  if (priv->temp_hot_seconds < 0)
+    {
+      g_debug ("Not updating temperature model, device can run continuously!");
+      return;
+    }
+
+  passed_seconds = (now - priv->temp_last_update) / 1e6;
+  old_ratio = priv->temp_current_ratio;
+
+  if (priv->temp_last_active)
+    {
+      alpha = exp (-passed_seconds / priv->temp_hot_seconds);
+      priv->temp_current_ratio = alpha * priv->temp_current_ratio + 1 - alpha;
+    }
+  else
+    {
+      alpha = exp (-passed_seconds / priv->temp_cold_seconds);
+      priv->temp_current_ratio = alpha * priv->temp_current_ratio;
+    }
+
+  priv->temp_last_active = is_active;
+  priv->temp_last_update = now;
+
+  old_temp = priv->temp_current;
+  if (priv->temp_current_ratio < TEMP_COLD_THRESH)
+    {
+      priv->temp_current = FP_TEMPERATURE_COLD;
+      next_threshold = is_active ? TEMP_COLD_THRESH : -1.0;
+    }
+  else if (priv->temp_current_ratio < TEMP_HOT_WARM_THRESH)
+    {
+      priv->temp_current = FP_TEMPERATURE_WARM;
+      next_threshold = is_active ? TEMP_WARM_HOT_THRESH : TEMP_COLD_THRESH;
+    }
+  else if (priv->temp_current_ratio < TEMP_WARM_HOT_THRESH)
+    {
+      /* Keep HOT until we reach TEMP_HOT_WARM_THRESH */
+      if (priv->temp_current != FP_TEMPERATURE_HOT)
+        priv->temp_current = FP_TEMPERATURE_WARM;
+
+      next_threshold = is_active ? TEMP_WARM_HOT_THRESH : TEMP_HOT_WARM_THRESH;
+    }
+  else
+    {
+      priv->temp_current = FP_TEMPERATURE_HOT;
+      next_threshold = is_active ? -1.0 : TEMP_HOT_WARM_THRESH;
+    }
+
+  old_temp_str = g_enum_to_string (FP_TYPE_TEMPERATURE, old_temp);
+  new_temp_str = g_enum_to_string (FP_TYPE_TEMPERATURE, priv->temp_current);
+  g_debug ("Updated temperature model after %0.2f seconds, ratio %0.2f -> %0.2f, active %d -> %d, %s -> %s",
+           passed_seconds,
+           old_ratio,
+           priv->temp_current_ratio,
+           priv->temp_last_active,
+           is_active,
+           old_temp_str,
+           new_temp_str);
+
+  if (priv->temp_current != old_temp)
+    g_object_notify (G_OBJECT (device), "temperature");
+
+  g_clear_pointer (&priv->temp_timeout, g_source_destroy);
+
+  if (next_threshold < 0)
+    return;
+
+  /* Set passed_seconds to the time until the next update is needed */
+  if (is_active)
+    passed_seconds = -priv->temp_hot_seconds * log ((next_threshold - 1.0) / (priv->temp_current_ratio - 1.0));
+  else
+    passed_seconds = -priv->temp_cold_seconds * log (next_threshold / priv->temp_current_ratio);
+
+  passed_seconds += TEMP_DELAY_SECONDS;
+
+  priv->temp_timeout = fpi_device_add_timeout (device,
+                                               passed_seconds * 1000,
+                                               update_temp_timeout,
+                                               NULL, NULL);
 }
