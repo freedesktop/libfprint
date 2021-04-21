@@ -179,6 +179,10 @@ fpi_device_error_new (FpDeviceError error)
       msg = "This device has been removed from the system.";
       break;
 
+    case FP_DEVICE_ERROR_TOO_HOT:
+      msg = "Device disabled to prevent overheating.";
+      break;
+
     default:
       g_warning ("Unsupported error, returning general error instead!");
       error = FP_DEVICE_ERROR_GENERAL;
