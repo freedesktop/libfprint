@@ -114,6 +114,7 @@ struct _FpiDeviceSynaptics
 
   bmkt_sensor_version_t mis_version;
 
+  gboolean              action_starting;
   GCancellable         *interrupt_cancellable;
 
   gint                  enroll_stage;
