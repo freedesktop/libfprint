@@ -805,6 +805,102 @@ fpi_device_action_error (FpDevice *device,
     }
 }
 
+/**
+ * fpi_device_critical_enter:
+ * @device: The #FpDevice
+ *
+ * Enter a critical section in the driver code where no outside calls from
+ * libfprint should happen. Drivers can already assume that everything
+ * happens from the same thread, however, that still allows e.g. the cancel
+ * vfunc to be called at any point in time.
+ *
+ * Using this kind of critical section, the driver can assume that libfprint
+ * will not forward any external requests to the driver for the time being.
+ * This is for example useful to prevent cancellation while the device is being
+ * set up. Or, said differently, using this feature means that the cancel
+ * handler is able to make more assumptions about the current state.
+ *
+ * Please note that the driver is not shielded from all external changes. For
+ * example the cancellable as returned by fpi_device_get_cancellable() will
+ * still change immediately.
+ *
+ * The driver may call this function multiple times, but must also ensure that
+ * fpi_device_critical_leave() is called an equal amount of times and that all
+ * critical sections are left before command completion.
+ */
+void
+fpi_device_critical_enter (FpDevice *device)
+{
+  FpDevicePrivate *priv = fp_device_get_instance_private (device);
+
+  g_return_if_fail (priv->current_action != FPI_DEVICE_ACTION_NONE);
+
+  priv->critical_section += 1;
+
+  /* Stop flushing events if that was previously queued. */
+  if (priv->critical_section_flush_source)
+    g_source_destroy (priv->critical_section_flush_source);
+  priv->critical_section_flush_source = NULL;
+}
+
+static gboolean
+fpi_device_critical_section_flush_idle_cb (FpDevice *device)
+{
+  FpDevicePrivate *priv = fp_device_get_instance_private (device);
+  FpDeviceClass *cls = FP_DEVICE_GET_CLASS (device);
+
+  if (priv->cancel_queued)
+    {
+      /* Cancellation must only happen if the driver is busy. */
+      if (priv->current_action != FPI_DEVICE_ACTION_NONE &&
+          priv->current_task_idle_return_source == NULL)
+        cls->cancel (device);
+      priv->cancel_queued = FALSE;
+
+      return G_SOURCE_KEEP;
+    }
+
+  priv->critical_section_flush_source = NULL;
+
+  return G_SOURCE_REMOVE;
+}
+
+/**
+ * fpi_device_critical_leave:
+ * @device: The #FpDevice
+ *
+ * Leave a critical section started by fpi_device_critical_enter().
+ *
+ * Once all critical sections have been left, libfprint will start flushing
+ * out the queued up requests. This is done from the mainloop and the driver
+ * is protected from reentrency issues.
+ */
+void
+fpi_device_critical_leave (FpDevice *device)
+{
+  FpDevicePrivate *priv = fp_device_get_instance_private (device);
+
+  g_return_if_fail (priv->current_action != FPI_DEVICE_ACTION_NONE);
+  g_return_if_fail (priv->critical_section);
+
+  priv->critical_section -= 1;
+  if (priv->critical_section)
+    return;
+
+  /* We left the critical section, make sure a flush is queued. */
+  if (priv->critical_section_flush_source)
+    return;
+
+  priv->critical_section_flush_source = g_idle_source_new ();
+  g_source_set_callback (priv->critical_section_flush_source,
+                         (GSourceFunc) fpi_device_critical_section_flush_idle_cb,
+                         device,
+                         NULL);
+  g_source_attach (priv->critical_section_flush_source,
+                   g_task_get_context (priv->current_task));
+  g_source_unref (priv->critical_section_flush_source);
+}
+
 static void
 clear_device_cancel_action (FpDevice *device)
 {

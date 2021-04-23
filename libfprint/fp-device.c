@@ -94,7 +94,10 @@ fp_device_cancel_in_idle_cb (gpointer user_data)
 
   priv->current_idle_cancel_source = NULL;
 
-  cls->cancel (self);
+  if (priv->critical_section)
+    priv->cancel_queued = TRUE;
+  else
+    cls->cancel (self);
 
   fpi_device_report_finger_status (self, FP_FINGER_STATUS_NONE);
 

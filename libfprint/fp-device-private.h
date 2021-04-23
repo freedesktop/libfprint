@@ -76,6 +76,11 @@ typedef struct
   gboolean            wait_for_finger;
   FpFingerStatusFlags finger_status;
 
+  /* Driver critical sections */
+  guint    critical_section;
+  GSource *critical_section_flush_source;
+  gboolean cancel_queued;
+
   /* Device temperature model information and state */
   GSource      *temp_timeout;
   FpTemperature temp_current;

@@ -264,6 +264,9 @@ void fpi_device_update_features (FpDevice       *device,
 void fpi_device_action_error (FpDevice *device,
                               GError   *error);
 
+void fpi_device_critical_enter (FpDevice *device);
+void fpi_device_critical_leave (FpDevice *device);
+
 void fpi_device_probe_complete (FpDevice    *device,
                                 const gchar *device_id,
                                 const gchar *device_name,
