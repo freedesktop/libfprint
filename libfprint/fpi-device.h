@@ -108,6 +108,8 @@ struct _FpIdEntry
  * @clear_storage: Delete all prints from the device
  * @cancel: Called on cancellation, this is a convenience to not need to handle
  *   the #GCancellable directly by using fpi_device_get_cancellable().
+ * @suspend: Called when the system is about to go into suspend
+ * @resume: Called after the system has resumed from suspend
  *
  * NOTE: If your driver is image based, then you should subclass #FpImageDevice
  * instead. #FpImageDevice based drivers use a different way of interacting
@@ -125,6 +127,9 @@ struct _FpIdEntry
  * Drivers must also handle cancellation properly for any long running
  * operation (i.e. any operation that requires capturing). It is entirely fine
  * to ignore cancellation requests for short operations (e.g. open/close).
+ *
+ * Note that @cancel, @suspend and @resume will not be called while the device
+ * is within a fpi_device_critical_enter()/fpi_device_critical_leave() block.
  *
  * This API is solely intended for drivers. It is purely internal and neither
  * API nor ABI stable.
@@ -164,6 +169,8 @@ struct _FpDeviceClass
   void (*clear_storage)  (FpDevice * device);
 
   void (*cancel)   (FpDevice *device);
+  void (*suspend)  (FpDevice *device);
+  void (*resume)   (FpDevice *device);
 };
 
 void fpi_device_class_auto_initialize_features (FpDeviceClass *device_class);
@@ -292,6 +299,10 @@ void fpi_device_list_complete (FpDevice  *device,
                                GError    *error);
 void fpi_device_clear_storage_complete (FpDevice *device,
                                         GError   *error);
+void fpi_device_suspend_complete (FpDevice *device,
+                                  GError   *error);
+void fpi_device_resume_complete (FpDevice *device,
+                                 GError   *error);
 
 void fpi_device_enroll_progress (FpDevice *device,
                                  gint      completed_stages,

@@ -20,6 +20,7 @@
 
 #define FP_COMPONENT "device"
 #include <math.h>
+#include <fcntl.h>
 
 #include "fpi-log.h"
 
@@ -857,7 +858,23 @@ fpi_device_critical_section_flush_idle_cb (FpDevice *device)
         cls->cancel (device);
       priv->cancel_queued = FALSE;
 
-      return G_SOURCE_KEEP;
+      return G_SOURCE_CONTINUE;
+    }
+
+  if (priv->suspend_queued)
+    {
+      cls->suspend (device);
+      priv->suspend_queued = FALSE;
+
+      return G_SOURCE_CONTINUE;
+    }
+
+  if (priv->resume_queued)
+    {
+      cls->resume (device);
+      priv->resume_queued = FALSE;
+
+      return G_SOURCE_CONTINUE;
     }
 
   priv->critical_section_flush_source = NULL;
@@ -993,15 +1010,6 @@ fp_device_task_return_in_idle_cb (gpointer user_data)
       return G_SOURCE_REMOVE;
     }
 
-  /* Return internal cancellation reason if we have one.
-   * Note that an external cancellation always returns G_IO_ERROR_CANCELLED */
-  if (cancellation_reason)
-    {
-      g_task_return_error (task, g_steal_pointer (&cancellation_reason));
-
-      return G_SOURCE_REMOVE;
-    }
-
   switch (data->type)
     {
     case FP_DEVICE_TASK_RETURN_INT:
@@ -1023,7 +1031,18 @@ fp_device_task_return_in_idle_cb (gpointer user_data)
       break;
 
     case FP_DEVICE_TASK_RETURN_ERROR:
-      g_task_return_error (task, g_steal_pointer (&data->result));
+      /* Return internal cancellation reason instead if we have one.
+       * Note that an external cancellation always returns G_IO_ERROR_CANCELLED
+       */
+      if (cancellation_reason)
+        {
+          g_task_set_task_data (task, NULL, NULL);
+          g_task_return_error (task, g_steal_pointer (&cancellation_reason));
+        }
+      else
+        {
+          g_task_return_error (task, g_steal_pointer (&data->result));
+        }
       break;
 
     default:
@@ -1524,6 +1543,157 @@ fpi_device_list_complete (FpDevice  *device,
     fpi_device_return_task_in_idle (device, FP_DEVICE_TASK_RETURN_PTR_ARRAY, prints);
   else
     fpi_device_return_task_in_idle (device, FP_DEVICE_TASK_RETURN_ERROR, error);
+}
+
+static void
+fpi_device_configure_wakeup (FpDevice *device, gboolean enabled)
+{
+  FpDevicePrivate *priv = fp_device_get_instance_private (device);
+
+  switch (priv->type)
+    {
+    case FP_DEVICE_TYPE_USB:
+      {
+        g_autoptr(GString) ports = NULL;
+        GUsbDevice *dev, *parent;
+        const char *wakeup_command = enabled ? "enabled" : "disabled";
+        guint8 bus, port;
+        g_autofree gchar *sysfs_wakeup = NULL;
+        gssize r;
+        int fd;
+
+        ports = g_string_new (NULL);
+        bus = g_usb_device_get_bus (priv->usb_device);
+
+        /* Walk up, skipping the root hub. */
+        dev = priv->usb_device;
+        while ((parent = g_usb_device_get_parent (dev)))
+          {
+            port = g_usb_device_get_port_number (dev);
+            g_string_prepend (ports, g_strdup_printf ("%d.", port));
+            dev = parent;
+          }
+        g_string_set_size (ports, ports->len - 1);
+
+        sysfs_wakeup = g_strdup_printf ("/sys/bus/usb/devices/%d-%s/power/wakeup", bus, ports->str);
+        fd = open (sysfs_wakeup, O_WRONLY);
+
+        if (fd < 0)
+          {
+            g_warning ("Failed to open %s", sysfs_wakeup);
+            return;
+          }
+
+        r = write (fd, wakeup_command, strlen (wakeup_command));
+        if (r < 0)
+          g_warning ("Failed to write command %s to %s", wakeup_command, sysfs_wakeup);
+        close (fd);
+
+        break;
+      }
+
+    case FP_DEVICE_TYPE_VIRTUAL:
+    case FP_DEVICE_TYPE_UDEV:
+      break;
+
+    default:
+      g_assert_not_reached ();
+      fpi_device_return_task_in_idle (device, FP_DEVICE_TASK_RETURN_ERROR,
+                                      fpi_device_error_new (FP_DEVICE_ERROR_GENERAL));
+      return;
+    }
+}
+
+static void
+fpi_device_suspend_completed (FpDevice *device)
+{
+  FpDevicePrivate *priv = fp_device_get_instance_private (device);
+
+  /* We have an ongoing operation, allow the device to wake up the machine. */
+  if (priv->current_action != FPI_DEVICE_ACTION_NONE)
+    fpi_device_configure_wakeup (device, TRUE);
+
+  if (priv->critical_section)
+    g_warning ("Driver was in a critical section at suspend time. It likely deadlocked!");
+
+  if (priv->suspend_error)
+    g_task_return_error (g_steal_pointer (&priv->suspend_resume_task),
+                         g_steal_pointer (&priv->suspend_error));
+  else
+    g_task_return_boolean (g_steal_pointer (&priv->suspend_resume_task), TRUE);
+}
+
+/**
+ * fpi_device_suspend_complete:
+ * @device: The #FpDevice
+ * @error: The #GError or %NULL on success
+ *
+ * Finish a suspend request. Only return a %NULL error if suspend has been
+ * correctly configured and the current action as returned by
+ * fpi_device_get_current_action() will continue to run after resume.
+ *
+ * In all other cases an error must be returned. Should this happen, any
+ * current action will be cancelled internally. It is acceptable to
+ * simply return #FP_ERROR_NOT_IMPLEMENTED from the suspend handler.
+ */
+void
+fpi_device_suspend_complete (FpDevice *device,
+                             GError   *error)
+{
+  FpDevicePrivate *priv = fp_device_get_instance_private (device);
+
+  g_return_if_fail (FP_IS_DEVICE (device));
+  g_return_if_fail (priv->suspend_resume_task);
+  g_return_if_fail (priv->suspend_error == NULL);
+
+  priv->suspend_error = error;
+  priv->is_suspended = TRUE;
+
+  /* If there is no error, we have no running task, return immediately. */
+  if (error == NULL || !priv->current_task || g_task_get_completed (priv->current_task))
+    {
+      fpi_device_suspend_completed (device);
+      return;
+    }
+
+  /* Wait for completion of the current task. */
+  g_signal_connect_object (priv->current_task,
+                           "notify::completed",
+                           G_CALLBACK (fpi_device_suspend_completed),
+                           device,
+                           G_CONNECT_SWAPPED);
+
+  /* And cancel the task internally. */
+  if (!priv->current_cancellation_reason)
+    priv->current_cancellation_reason = fpi_device_error_new_msg (FP_DEVICE_ERROR_BUSY,
+                                                                  "Cannot run while suspended.");
+
+  g_cancellable_cancel (priv->current_cancellable);
+}
+
+/**
+ * fpi_device_resume_complete:
+ * @device: The #FpDevice
+ * @error: The #GError or %NULL on success
+ *
+ * Finish a resume request.
+ */
+void
+fpi_device_resume_complete (FpDevice *device,
+                            GError   *error)
+{
+  FpDevicePrivate *priv = fp_device_get_instance_private (device);
+
+  g_return_if_fail (FP_IS_DEVICE (device));
+  g_return_if_fail (priv->suspend_resume_task);
+
+  priv->is_suspended = FALSE;
+  fpi_device_configure_wakeup (device, FALSE);
+
+  if (error)
+    g_task_return_error (g_steal_pointer (&priv->suspend_resume_task), error);
+  else
+    g_task_return_boolean (g_steal_pointer (&priv->suspend_resume_task), TRUE);
 }
 
 /**

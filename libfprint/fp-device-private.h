@@ -50,6 +50,7 @@ typedef struct
 
   gboolean        is_removed;
   gboolean        is_open;
+  gboolean        is_suspended;
 
   gchar          *device_id;
   gchar          *device_name;
@@ -80,6 +81,12 @@ typedef struct
   guint    critical_section;
   GSource *critical_section_flush_source;
   gboolean cancel_queued;
+  gboolean suspend_queued;
+  gboolean resume_queued;
+
+  /* Suspend/resume tasks */
+  GTask  *suspend_resume_task;
+  GError *suspend_error;
 
   /* Device temperature model information and state */
   GSource      *temp_timeout;
