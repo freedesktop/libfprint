@@ -57,10 +57,8 @@ auto_close_fake_device_free (FpAutoCloseDevice *device)
     }
 
   if (fp_device_is_open (device))
-    {
-      if (!fp_device_close_sync (device, NULL, &error))
-        g_error ("Could not close device: %s", error->message);
-    }
+    if (!fp_device_close_sync (device, NULL, &error))
+      g_error ("Could not close device: %s", error->message);
 
   g_object_unref (device);
 }
@@ -1953,6 +1951,215 @@ test_driver_identify_report_no_callback (void)
 }
 
 static void
+test_driver_identify_cb (FpDevice     *device,
+                         GAsyncResult *res,
+                         gpointer      user_data)
+{
+  MatchCbData *data = user_data;
+  gboolean r;
+
+  g_assert (data->called == FALSE);
+  data->called = TRUE;
+
+  r = fp_device_identify_finish (device, res, &data->match, &data->print, &data->error);
+
+  if (r)
+    g_assert_no_error (data->error);
+  else
+    g_assert_nonnull (data->error);
+
+  if (data->match)
+    g_assert_no_error (data->error);
+}
+
+static void
+test_driver_identify_suspend_continues (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(MatchCbData) match_data = g_new0 (MatchCbData, 1);
+  g_autoptr(MatchCbData) identify_data = g_new0 (MatchCbData, 1);
+  g_autoptr(GPtrArray) prints = NULL;
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(GError) error = NULL;
+  void (*orig_identify) (FpDevice *device) = dev_class->identify;
+  FpiDeviceFake *fake_dev;
+  FpPrint *expected_matched;
+
+  device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  fake_dev = FPI_DEVICE_FAKE (device);
+  orig_identify = dev_class->identify;
+  dev_class->identify = fake_device_noop;
+
+  prints = make_fake_prints_gallery (device, 500);
+  expected_matched = g_ptr_array_index (prints, g_random_int_range (0, 499));
+  fp_print_set_description (expected_matched, "fake-verified");
+
+  match_data->gallery = prints;
+
+  fake_dev->ret_print = make_fake_print (device, NULL);
+
+  g_assert_true (fp_device_open_sync (device, NULL, NULL));
+
+  fp_device_identify (device, prints, NULL,
+                      test_driver_match_cb, match_data, NULL,
+                      (GAsyncReadyCallback) test_driver_identify_cb, identify_data);
+
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  fake_dev->ret_suspend = NULL;
+  fp_device_suspend_sync (device, &error);
+  g_assert (fake_dev->last_called_function == dev_class->suspend);
+  g_assert_no_error (error);
+
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  g_assert_false (match_data->called);
+  g_assert_false (identify_data->called);
+
+  orig_identify (device);
+
+  /* This currently happens immediately (not ABI though) */
+  g_assert_true (match_data->called);
+  g_assert (match_data->match == expected_matched);
+
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  g_assert_true (identify_data->called);
+  g_assert (identify_data->match == expected_matched);
+
+  g_assert (fake_dev->last_called_function == orig_identify);
+
+  fake_dev->ret_resume = NULL;
+  fp_device_resume_sync (device, &error);
+  g_assert (fake_dev->last_called_function == dev_class->resume);
+  g_assert_no_error (error);
+}
+
+static void
+test_driver_identify_suspend_succeeds (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(MatchCbData) match_data = g_new0 (MatchCbData, 1);
+  g_autoptr(MatchCbData) identify_data = g_new0 (MatchCbData, 1);
+  g_autoptr(GPtrArray) prints = NULL;
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(GError) error = NULL;
+  void (*orig_identify) (FpDevice *device) = dev_class->identify;
+  FpiDeviceFake *fake_dev;
+  FpPrint *expected_matched;
+
+  device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  fake_dev = FPI_DEVICE_FAKE (device);
+  orig_identify = dev_class->identify;
+  dev_class->identify = fake_device_noop;
+
+  prints = make_fake_prints_gallery (device, 500);
+  expected_matched = g_ptr_array_index (prints, g_random_int_range (0, 499));
+  fp_print_set_description (expected_matched, "fake-verified");
+
+  match_data->gallery = prints;
+
+  g_assert_true (fp_device_open_sync (device, NULL, NULL));
+
+  fake_dev->ret_print = make_fake_print (device, NULL);
+  fp_device_identify (device, prints, NULL,
+                      test_driver_match_cb, match_data, NULL,
+                      (GAsyncReadyCallback) test_driver_identify_cb, identify_data);
+
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  /* suspend_sync hangs until cancellation, so we need to trigger orig_identify
+   * from the mainloop after calling suspend_sync.
+   */
+  fpi_device_add_timeout (device, 0, (FpTimeoutFunc) orig_identify, NULL, NULL);
+
+  fake_dev->ret_suspend = fpi_device_error_new (FP_DEVICE_ERROR_NOT_SUPPORTED);
+  fp_device_suspend_sync (device, &error);
+
+  /* At this point we are done with everything */
+  g_assert (fake_dev->last_called_function == orig_identify);
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_NOT_SUPPORTED);
+  g_clear_error (&error);
+
+  /* We suspended, but device reported success and that will be reported. */
+  g_assert_true (match_data->called);
+  g_assert (match_data->match == expected_matched);
+  g_assert_true (identify_data->called);
+  g_assert (identify_data->match == expected_matched);
+
+  fake_dev->ret_resume = NULL;
+  fp_device_resume_sync (device, &error);
+  g_assert (fake_dev->last_called_function == dev_class->resume);
+  g_assert_no_error (error);
+}
+
+static void
+test_driver_identify_suspend_busy_error (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(MatchCbData) match_data = g_new0 (MatchCbData, 1);
+  g_autoptr(MatchCbData) identify_data = g_new0 (MatchCbData, 1);
+  g_autoptr(GPtrArray) prints = NULL;
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(GError) error = NULL;
+  void (*orig_identify) (FpDevice *device) = dev_class->identify;
+  FpiDeviceFake *fake_dev;
+  FpPrint *expected_matched;
+
+  device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  fake_dev = FPI_DEVICE_FAKE (device);
+  orig_identify = dev_class->identify;
+  dev_class->identify = fake_device_noop;
+
+  prints = make_fake_prints_gallery (device, 500);
+  expected_matched = g_ptr_array_index (prints, g_random_int_range (0, 499));
+  fp_print_set_description (expected_matched, "fake-verified");
+
+  match_data->gallery = prints;
+
+  g_assert_true (fp_device_open_sync (device, NULL, NULL));
+
+  fake_dev->ret_error = fpi_device_error_new (FP_DEVICE_ERROR_GENERAL);
+  fake_dev->ret_print = make_fake_print (device, NULL);
+  fp_device_identify (device, prints, NULL,
+                      test_driver_match_cb, match_data, NULL,
+                      (GAsyncReadyCallback) test_driver_identify_cb, identify_data);
+
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  /* suspend_sync hangs until cancellation, so we need to trigger orig_identify
+   * from the mainloop after calling suspend_sync.
+   */
+  fpi_device_add_timeout (device, 0, (FpTimeoutFunc) orig_identify, NULL, NULL);
+
+  fake_dev->ret_suspend = fpi_device_error_new (FP_DEVICE_ERROR_NOT_SUPPORTED);
+  fp_device_suspend_sync (device, &error);
+  fake_dev->ret_error = NULL;
+
+  /* At this point we are done with everything */
+  g_assert (fake_dev->last_called_function == orig_identify);
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_NOT_SUPPORTED);
+  g_clear_error (&error);
+
+  /* The device reported an error, an this error will be overwritten.
+   */
+  g_assert_false (match_data->called);
+  g_assert_true (identify_data->called);
+  g_assert_null (identify_data->match);
+  g_assert_error (identify_data->error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_BUSY);
+
+  fake_dev->ret_resume = NULL;
+  fp_device_resume_sync (device, &error);
+  g_assert (fake_dev->last_called_function == dev_class->resume);
+  g_assert_no_error (error);
+}
+
+static void
 fake_device_stub_capture (FpDevice *device)
 {
 }
@@ -2993,6 +3200,11 @@ main (int argc, char *argv[])
   g_test_add_func ("/driver/identify/not_reported", test_driver_identify_not_reported);
   g_test_add_func ("/driver/identify/complete_retry", test_driver_identify_complete_retry);
   g_test_add_func ("/driver/identify/report_no_cb", test_driver_identify_report_no_callback);
+
+  g_test_add_func ("/driver/identify/suspend_continues", test_driver_identify_suspend_continues);
+  g_test_add_func ("/driver/identify/suspend_succeeds", test_driver_identify_suspend_succeeds);
+  g_test_add_func ("/driver/identify/suspend_busy_error", test_driver_identify_suspend_busy_error);
+
   g_test_add_func ("/driver/capture", test_driver_capture);
   g_test_add_func ("/driver/capture/not_supported", test_driver_capture_not_supported);
   g_test_add_func ("/driver/capture/error", test_driver_capture_error);

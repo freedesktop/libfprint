@@ -41,6 +41,9 @@ struct _FpiDeviceFake
   FpImage        *ret_image;
   GPtrArray      *ret_list;
 
+  GError         *ret_suspend;
+  GError         *ret_resume;
+
   gpointer        action_data;
   gpointer        user_data;
 

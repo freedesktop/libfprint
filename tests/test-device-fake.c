@@ -272,6 +272,26 @@ fpi_device_fake_cancel (FpDevice *device)
 }
 
 static void
+fpi_device_fake_suspend (FpDevice *device)
+{
+  FpiDeviceFake *fake_dev = FPI_DEVICE_FAKE (device);
+
+  fake_dev->last_called_function = fpi_device_fake_suspend;
+
+  fpi_device_suspend_complete (device, g_steal_pointer (&fake_dev->ret_suspend));
+}
+
+static void
+fpi_device_fake_resume (FpDevice *device)
+{
+  FpiDeviceFake *fake_dev = FPI_DEVICE_FAKE (device);
+
+  fake_dev->last_called_function = fpi_device_fake_resume;
+
+  fpi_device_resume_complete (device, g_steal_pointer (&fake_dev->ret_resume));
+}
+
+static void
 fpi_device_fake_init (FpiDeviceFake *self)
 {
 }
@@ -299,6 +319,8 @@ fpi_device_fake_class_init (FpiDeviceFakeClass *klass)
   dev_class->delete = fpi_device_fake_delete;
   dev_class->cancel = fpi_device_fake_cancel;
   dev_class->clear_storage = fpi_device_fake_clear_storage;
+  dev_class->suspend = fpi_device_fake_suspend;
+  dev_class->resume = fpi_device_fake_resume;
 
   fpi_device_class_auto_initialize_features (dev_class);
 }
