@@ -35,9 +35,11 @@ typedef FpDevice FpAutoCloseDevice;
 static FpAutoCloseDevice *
 auto_close_fake_device_new (void)
 {
+  g_autoptr(GError) error = NULL;
   FpAutoCloseDevice *device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
 
-  g_assert_true (fp_device_open_sync (device, NULL, NULL));
+  if (!fp_device_open_sync (device, NULL, &error))
+    g_error ("Could not open device: %s", error->message);
 
   return device;
 }
@@ -45,6 +47,7 @@ auto_close_fake_device_new (void)
 static void
 auto_close_fake_device_free (FpAutoCloseDevice *device)
 {
+  g_autoptr(GError) error = NULL;
   FpiDeviceFake *fake_dev = FPI_DEVICE_FAKE (device);
 
   if (fake_dev->return_action_error)
@@ -54,7 +57,10 @@ auto_close_fake_device_free (FpAutoCloseDevice *device)
     }
 
   if (fp_device_is_open (device))
-    g_assert_true (fp_device_close_sync (device, NULL, NULL));
+    {
+      if (!fp_device_close_sync (device, NULL, &error))
+        g_error ("Could not close device: %s", error->message);
+    }
 
   g_object_unref (device);
 }
