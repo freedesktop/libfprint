@@ -198,12 +198,17 @@ cmd_interrupt_cb (FpiUsbTransfer *transfer,
                   GError         *error)
 {
   g_debug ("interrupt transfer done");
+  fpi_device_critical_enter (device);
+
   if (error)
     {
       if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
         {
           g_error_free (error);
-          fpi_ssm_jump_to_state (transfer->ssm, SYNAPTICS_CMD_GET_RESP);
+          if (FPI_DEVICE_SYNAPTICS (device)->cmd_suspended)
+            fpi_ssm_jump_to_state (transfer->ssm, SYNAPTICS_CMD_SUSPENDED);
+          else
+            fpi_ssm_jump_to_state (transfer->ssm, SYNAPTICS_CMD_GET_RESP);
           return;
         }
 
@@ -264,6 +269,9 @@ synaptics_cmd_run_state (FpiSsm   *ssm,
       break;
 
     case SYNAPTICS_CMD_WAIT_INTERRUPT:
+      /* Interruptions are permitted only during an interrupt transfer */
+      fpi_device_critical_leave (dev);
+
       transfer = fpi_usb_transfer_new (dev);
       transfer->ssm = ssm;
       fpi_usb_transfer_fill_interrupt (transfer, USB_EP_INTERRUPT, USB_INTERRUPT_DATA_SIZE);
@@ -291,6 +299,17 @@ synaptics_cmd_run_state (FpiSsm   *ssm,
     case SYNAPTICS_CMD_RESTART:
       fpi_ssm_jump_to_state (ssm, SYNAPTICS_CMD_SEND_PENDING);
       break;
+
+    case SYNAPTICS_CMD_SUSPENDED:
+      /* The resume handler continues to the next state! */
+      fpi_device_critical_leave (dev);
+      fpi_device_suspend_complete (dev, NULL);
+      break;
+
+    case SYNAPTICS_CMD_RESUME:
+      fpi_device_critical_enter (dev);
+      fpi_ssm_jump_to_state (ssm, SYNAPTICS_CMD_WAIT_INTERRUPT);
+      break;
     }
 }
 
@@ -306,6 +325,7 @@ cmd_ssm_done (FpiSsm *ssm, FpDevice *dev, GError *error)
   if (error || self->cmd_complete_on_removal)
     callback (self, NULL, error);
 
+  fpi_device_critical_leave (dev);
   self->cmd_complete_on_removal = FALSE;
 }
 
@@ -415,6 +435,7 @@ synaptics_sensor_cmd (FpiDeviceSynaptics *self,
                                        SYNAPTICS_CMD_NUM_STATES);
           fpi_ssm_set_data (self->cmd_ssm, callback, NULL);
 
+          fpi_device_critical_enter (FP_DEVICE (self));
           fpi_ssm_start (self->cmd_ssm, cmd_ssm_done);
         }
     }
@@ -1386,6 +1407,58 @@ cancel (FpDevice *dev)
 }
 
 static void
+suspend (FpDevice *dev)
+{
+  FpiDeviceSynaptics *self = FPI_DEVICE_SYNAPTICS (dev);
+  FpiDeviceAction action = fpi_device_get_current_action (dev);
+
+  g_debug ("got suspend request");
+
+  if (action != FPI_DEVICE_ACTION_VERIFY && action != FPI_DEVICE_ACTION_IDENTIFY)
+    {
+      fpi_device_suspend_complete (dev, fpi_device_error_new (FP_DEVICE_ERROR_NOT_SUPPORTED));
+      return;
+    }
+
+  /* We are guaranteed to have a cmd_ssm running at this time. */
+  g_assert (self->cmd_ssm);
+  g_assert (fpi_ssm_get_cur_state (self->cmd_ssm) == SYNAPTICS_CMD_WAIT_INTERRUPT);
+  self->cmd_suspended = TRUE;
+
+  /* Cancel the current transfer.
+   * The CMD SSM will go into the suspend state and signal readyness. */
+  g_cancellable_cancel (self->interrupt_cancellable);
+  g_clear_object (&self->interrupt_cancellable);
+  self->interrupt_cancellable = g_cancellable_new ();
+}
+
+static void
+resume (FpDevice *dev)
+{
+  FpiDeviceSynaptics *self = FPI_DEVICE_SYNAPTICS (dev);
+  FpiDeviceAction action = fpi_device_get_current_action (dev);
+
+  g_debug ("got resume request");
+
+  if (action != FPI_DEVICE_ACTION_VERIFY && action != FPI_DEVICE_ACTION_IDENTIFY)
+    {
+      fpi_device_resume_complete (dev, fpi_device_error_new (FP_DEVICE_ERROR_NOT_SUPPORTED));
+      return;
+    }
+
+  /* We must have a suspended cmd_ssm at this point */
+  g_assert (self->cmd_ssm);
+  g_assert (self->cmd_suspended);
+  g_assert (fpi_ssm_get_cur_state (self->cmd_ssm) == SYNAPTICS_CMD_SUSPENDED);
+  self->cmd_suspended = FALSE;
+
+  /* Restart interrupt transfer. */
+  fpi_ssm_jump_to_state (self->cmd_ssm, SYNAPTICS_CMD_RESUME);
+
+  fpi_device_resume_complete (dev, NULL);
+}
+
+static void
 fpi_device_synaptics_init (FpiDeviceSynaptics *self)
 {
 }
@@ -1413,6 +1486,8 @@ fpi_device_synaptics_class_init (FpiDeviceSynapticsClass *klass)
   dev_class->delete = delete_print;
   dev_class->clear_storage = clear_storage;
   dev_class->cancel = cancel;
+  dev_class->suspend = suspend;
+  dev_class->resume = resume;
 
   fpi_device_class_auto_initialize_features (dev_class);
 }

@@ -93,6 +93,8 @@ typedef enum {
   SYNAPTICS_CMD_WAIT_INTERRUPT,
   SYNAPTICS_CMD_SEND_ASYNC,
   SYNAPTICS_CMD_RESTART,
+  SYNAPTICS_CMD_SUSPENDED,
+  SYNAPTICS_CMD_RESUME,
   SYNAPTICS_CMD_NUM_STATES,
 } SynapticsCmdState;
 
@@ -110,6 +112,7 @@ struct _FpiDeviceSynaptics
   FpiSsm               *cmd_ssm;
   FpiUsbTransfer       *cmd_pending_transfer;
   gboolean              cmd_complete_on_removal;
+  gboolean              cmd_suspended;
   guint8                id_idx;
 
   bmkt_sensor_version_t mis_version;
