@@ -1559,6 +1559,7 @@ fpi_device_configure_wakeup (FpDevice *device, gboolean enabled)
         const char *wakeup_command = enabled ? "enabled" : "disabled";
         guint8 bus, port;
         g_autofree gchar *sysfs_wakeup = NULL;
+        g_autofree gchar *sysfs_persist = NULL;
         gssize r;
         int fd;
 
@@ -1587,6 +1588,25 @@ fpi_device_configure_wakeup (FpDevice *device, gboolean enabled)
         r = write (fd, wakeup_command, strlen (wakeup_command));
         if (r < 0)
           g_warning ("Failed to write command %s to %s", wakeup_command, sysfs_wakeup);
+        close (fd);
+
+        /* Persist means that the kernel tries to keep the USB device open
+         * in case it is "replugged" due to suspend.
+         * This is not helpful, as it will receive a reset and will be in a bad
+         * state. Instead, seeing an unplug and a new device makes more sense.
+         */
+        sysfs_persist = g_strdup_printf ("/sys/bus/usb/devices/%d-%s/power/persist", bus, ports->str);
+        fd = open (sysfs_persist, O_WRONLY);
+
+        if (fd < 0)
+          {
+            g_warning ("Failed to open %s", sysfs_persist);
+            return;
+          }
+
+        r = write (fd, "0", 1);
+        if (r < 0)
+          g_warning ("Failed to disable USB persist by writing to %s", sysfs_persist);
         close (fd);
 
         break;
