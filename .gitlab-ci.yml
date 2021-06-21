@@ -166,7 +166,7 @@ container_fedora_build:
       libpcap-devel
       libudev-devel
     FDO_DISTRIBUTION_EXEC: |
-      git clone https://github.com/martinpitt/umockdev.git && \
+      git clone -b benzea/spi https://github.com/benzea/umockdev.git && \
         cd umockdev && \
         meson _build --prefix=/usr && \
         ninja -C _build && ninja -C _build install
