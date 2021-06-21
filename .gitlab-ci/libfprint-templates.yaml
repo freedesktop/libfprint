@@ -13,6 +13,7 @@
     gtk3-devel
     libabigail
     libgusb-devel
+    libgudev-devel
     libX11-devel
     libXv-devel
     meson
