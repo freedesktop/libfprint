@@ -137,8 +137,14 @@ endian_independent_drivers = virtual_drivers + [
 
 all_drivers = default_drivers + virtual_drivers + udev_drivers
 
+all_but_udev_drivers = default_drivers + virtual_drivers
+
 if drivers == [ 'all' ]
     drivers = all_drivers
+endif
+
+if drivers == [ 'all_but_udev' ]
+    drivers = all_but_udev_drivers
 endif
 
 if drivers == [ 'default' ]

@@ -1,5 +1,5 @@
 option('drivers',
-       description: 'Drivers to integrate, "default" selects the default set, "all" selects all drivers',
+       description: 'Drivers to integrate, "default" selects the default set, "all" selects all drivers, "all_but_udev" selects all drivers except ones that need udev',
        type: 'string',
        value: 'default')
 option('introspection',
