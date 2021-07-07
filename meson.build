@@ -113,6 +113,7 @@ default_drivers = [
     'vfs301',
     'vfs0050',
     'etes603',
+    'egis0570',
     'vcom5s',
     'synaptics',
     'elan',
